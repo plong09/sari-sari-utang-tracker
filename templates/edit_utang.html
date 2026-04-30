@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Utang</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="edit-page">
+  <div class="edit-card">
+    <a href="/customer/{{ customer_id }}" class="back-link">← Back</a>
+
+    <h1>Edit Utang</h1>
+
+    <form method="POST">
+
+      <label>Item</label>
+      <select name="item_name" id="editItemSelect">
+        {% for product in products %}
+          <option value="{{ product[1] }}"
+                  data-price="{{ product[2] }}"
+                  {% if product[1] == utang[2] %}selected{% endif %}>
+            {{ product[1] }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <label>Quantity</label>
+      <input type="number" name="quantity" id="editQty" value="{{ utang[3] }}">
+
+      <label>Price</label>
+      <input type="text" name="price" id="editPrice" value="{{ utang[4] }}">
+
+      <label>Total</label>
+      <input type="text" id="editTotal" value="{{ utang[5] }}" readonly>
+
+      <button class="green-btn" type="submit">Save Changes</button>
+
+    </form>
+  </div>
+</div>
+
+<script>
+const item = document.getElementById("editItemSelect");
+const qty = document.getElementById("editQty");
+const price = document.getElementById("editPrice");
+const total = document.getElementById("editTotal");
+
+function compute(){
+  const q = parseInt(qty.value) || 0;
+  const p = parseFloat(price.value) || 0;
+  total.value = (q * p).toFixed(2);
+}
+
+item.addEventListener("change", ()=>{
+  const selected = item.options[item.selectedIndex];
+  price.value = selected.getAttribute("data-price");
+  compute();
+});
+
+qty.addEventListener("input", compute);
+price.addEventListener("input", compute);
+</script>
+
+</body>
+</html>

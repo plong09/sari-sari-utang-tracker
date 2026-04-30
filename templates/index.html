@@ -135,7 +135,14 @@
                     <td>₱{{ "%.2f"|format(u[4]) }}</td>
                     <td>₱{{ "%.2f"|format(u[5]) }}</td>
                     <td><span class="badge unpaid">{{ u[6] }}</span></td>
-                    <td>✏️ 🗑️ 🖨️</td>
+                    <td>
+                        <a href="/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}">✏️</a>
+
+                        <a href="/delete-utang/{{ u[0] }}/{{ selected_customer[0] }}"
+                            onclick="return confirm('Delete this utang record?')">
+                            🗑️
+                        </a>
+                        </td>
                   </tr>
                 {% endfor %}
               {% else %}
@@ -185,15 +192,27 @@
 
         <div class="products">
           <div class="products-head">
-            <h3>Product List</h3>
+            <h3>Product Management</h3>
             <input type="text" placeholder="Search product...">
           </div>
+
+          <form action="/add-product" method="POST" class="product-form">
+            <input type="text" name="name" placeholder="Product name" required>
+            <input type="number" name="price" placeholder="Price" step="0.01" required>
+            <button class="green-btn" type="submit">+ Add Product</button>
+          </form>
 
           <div class="product-list">
             {% for product in products %}
               <div class="product">
                 📦 <b>{{ product[1] }}</b>
                 <span>₱{{ "%.2f"|format(product[2]) }}</span>
+
+                <a href="/delete-product/{{ product[0] }}"
+                   onclick="return confirm('Delete this product?')"
+                   class="delete-product">
+                  Delete
+                </a>
               </div>
             {% endfor %}
           </div>

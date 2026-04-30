@@ -30,37 +30,33 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS utang (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id INTEGER NOT NULL,
-        item_name TEXT NOT NULL,
-        quantity INTEGER NOT NULL,
-        price REAL NOT NULL,
-        total REAL NOT NULL,
+        customer_id INTEGER,
+        item_name TEXT,
+        quantity INTEGER,
+        price REAL,
+        total REAL,
         status TEXT DEFAULT 'UNPAID'
     )
     """)
 
     cursor.execute("SELECT COUNT(*) FROM products")
-    product_count = cursor.fetchone()[0]
-
-    if product_count == 0:
-        default_products = [
-            ("Coke 1.5L", 20),
-            ("Noodles", 15),
-            ("Sardines", 28),
-            ("Bread", 10),
-            ("Egg", 10)
-        ]
-
+    if cursor.fetchone()[0] == 0:
         cursor.executemany(
             "INSERT INTO products (name, price) VALUES (?, ?)",
-            default_products
+            [
+                ("Coke 1.5L", 20),
+                ("Noodles", 15),
+                ("Sardines", 28),
+                ("Bread", 10),
+                ("Egg", 10)
+            ]
         )
 
     conn.commit()
     conn.close()
 
 
-def get_customers_with_total(cursor):
+def get_customers(cursor):
     cursor.execute("""
     SELECT customers.id, customers.name, COALESCE(SUM(utang.total), 0)
     FROM customers
@@ -76,9 +72,9 @@ def index():
     conn = get_db()
     cursor = conn.cursor()
 
-    customers = get_customers_with_total(cursor)
+    customers = get_customers(cursor)
 
-    cursor.execute("SELECT * FROM products ORDER BY name")
+    cursor.execute("SELECT * FROM products")
     products = cursor.fetchall()
 
     cursor.execute("SELECT COALESCE(SUM(total), 0) FROM utang")
@@ -86,14 +82,47 @@ def index():
 
     conn.close()
 
-    return render_template(
-        "index.html",
+    return render_template("index.html",
         customers=customers,
         products=products,
+        total_utang=total_utang,
         selected_customer=None,
         utang_list=[],
-        selected_total=0,
-        total_utang=total_utang
+        selected_total=0
+    )
+
+
+@app.route("/customer/<int:id>")
+def customer(id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    customers = get_customers(cursor)
+
+    cursor.execute("SELECT * FROM products")
+    products = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM customers WHERE id=?", (id,))
+    selected_customer = cursor.fetchone()
+
+    cursor.execute("SELECT * FROM utang WHERE customer_id=?", (id,))
+    utang_list = cursor.fetchall()
+
+    cursor.execute("SELECT COALESCE(SUM(total),0) FROM utang WHERE customer_id=?", (id,))
+    selected_total = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COALESCE(SUM(total),0) FROM utang")
+    total_utang = cursor.fetchone()[0]
+
+    conn.close()
+
+    return render_template("index.html",
+        customers=customers,
+        products=products,
+        total_utang=total_utang,
+        selected_customer=selected_customer,
+        utang_list=utang_list,
+        selected_total=selected_total
     )
 
 
@@ -105,59 +134,44 @@ def add_customer():
     cursor = conn.cursor()
 
     cursor.execute("INSERT INTO customers (name) VALUES (?)", (name,))
-
     conn.commit()
     conn.close()
 
     return redirect("/")
 
 
-@app.route("/customer/<int:customer_id>")
-def customer_page(customer_id):
+@app.route("/add-product", methods=["POST"])
+def add_product():
+    name = request.form["name"]
+    price = float(request.form["price"])
+
     conn = get_db()
     cursor = conn.cursor()
 
-    customers = get_customers_with_total(cursor)
-
-    cursor.execute("SELECT * FROM products ORDER BY name")
-    products = cursor.fetchall()
-
-    cursor.execute("SELECT * FROM customers WHERE id = ?", (customer_id,))
-    selected_customer = cursor.fetchone()
-
-    cursor.execute(
-        "SELECT * FROM utang WHERE customer_id = ? ORDER BY id DESC",
-        (customer_id,)
-    )
-    utang_list = cursor.fetchall()
-
-    cursor.execute(
-        "SELECT COALESCE(SUM(total), 0) FROM utang WHERE customer_id = ?",
-        (customer_id,)
-    )
-    selected_total = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COALESCE(SUM(total), 0) FROM utang")
-    total_utang = cursor.fetchone()[0]
-
+    cursor.execute("INSERT INTO products (name, price) VALUES (?, ?)", (name, price))
+    conn.commit()
     conn.close()
 
-    return render_template(
-        "index.html",
-        customers=customers,
-        products=products,
-        selected_customer=selected_customer,
-        utang_list=utang_list,
-        selected_total=selected_total,
-        total_utang=total_utang
-    )
+    return redirect(request.referrer)
+
+
+@app.route("/delete-product/<int:id>")
+def delete_product(id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM products WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(request.referrer)
 
 
 @app.route("/add-utang", methods=["POST"])
 def add_utang():
-    customer_id = request.form["customer_id"]
-    item_name = request.form["item_name"]
-    quantity = int(request.form["quantity"])
+    cid = request.form["customer_id"]
+    item = request.form["item_name"]
+    qty = int(request.form["quantity"])
     price = float(request.form["price"])
     total = float(request.form["total"])
 
@@ -167,14 +181,70 @@ def add_utang():
     cursor.execute("""
     INSERT INTO utang (customer_id, item_name, quantity, price, total)
     VALUES (?, ?, ?, ?, ?)
-    """, (customer_id, item_name, quantity, price, total))
+    """, (cid, item, qty, price, total))
 
     conn.commit()
     conn.close()
 
-    return redirect(f"/customer/{customer_id}")
+    return redirect(f"/customer/{cid}")
+
+
+@app.route("/delete-utang/<int:id>/<int:cid>")
+def delete_utang(id, cid):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM utang WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(f"/customer/{cid}")
+
+
+@app.route("/edit-utang/<int:utang_id>/<int:customer_id>", methods=["GET", "POST"])
+def edit_utang(utang_id, customer_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # IF USER CLICK SAVE
+    if request.method == "POST":
+        item_name = request.form["item_name"]
+        quantity = int(request.form["quantity"])
+        price = float(request.form["price"])
+        total = quantity * price
+
+        cursor.execute("""
+        UPDATE utang
+        SET item_name = ?, quantity = ?, price = ?, total = ?
+        WHERE id = ?
+        """, (item_name, quantity, price, total, utang_id))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(f"/customer/{customer_id}")
+
+    # GET DATA FOR EDIT PAGE
+    cursor.execute("SELECT * FROM utang WHERE id = ?", (utang_id,))
+    utang = cursor.fetchone()
+
+    cursor.execute("SELECT * FROM products ORDER BY name")
+    products = cursor.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "edit_utang.html",
+        utang=utang,
+        products=products,
+        customer_id=customer_id
+    )
 
 
 if __name__ == "__main__":
+
+
+    
     init_db()
-    app.run(debug=True)
+    app.run(debug=True) 
+
