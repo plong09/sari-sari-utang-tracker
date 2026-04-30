@@ -24,8 +24,12 @@
       <h3>Quick Summary</h3>
       <p>Total Utang</p>
       <strong>₱ 0.00</strong>
+
       <p>Customers</p>
       <strong>{{ customers|length }}</strong>
+
+      <p>Products</p>
+      <strong>{{ products|length }}</strong>
     </div>
   </aside>
 
@@ -36,10 +40,37 @@
     </header>
 
     <section class="cards">
-      <div class="stat"><span>💰</span><div><p>Total Utang</p><h2>₱ 0.00</h2></div></div>
-      <div class="stat"><span>👥</span><div><p>Customers</p><h2>{{ customers|length }}</h2></div></div>
-      <div class="stat"><span>📦</span><div><p>Products Listed</p><h2>0</h2></div></div>
-      <div class="stat"><span>🧾</span><div><p>Today's Added</p><h2>₱ 0.00</h2></div></div>
+      <div class="stat">
+        <span>💰</span>
+        <div>
+          <p>Total Utang</p>
+          <h2>₱ 0.00</h2>
+        </div>
+      </div>
+
+      <div class="stat">
+        <span>👥</span>
+        <div>
+          <p>Customers</p>
+          <h2>{{ customers|length }}</h2>
+        </div>
+      </div>
+
+      <div class="stat">
+        <span>📦</span>
+        <div>
+          <p>Products Listed</p>
+          <h2>{{ products|length }}</h2>
+        </div>
+      </div>
+
+      <div class="stat">
+        <span>🧾</span>
+        <div>
+          <p>Today's Added</p>
+          <h2>₱ 0.00</h2>
+        </div>
+      </div>
     </section>
 
     <section class="content-grid">
@@ -113,19 +144,20 @@
         <div class="form-card">
           <h3>Add New Utang</h3>
 
-          <div class="form-grid">
-            <select>
-              <option>Select item...</option>
-              <option>Coke 1.5L</option>
-              <option>Noodles</option>
-              <option>Sardines</option>
-            </select>
+        <div class="form-grid">
+            <select id="itemSelect">
+            <option value="">Select item...</option>
+            {% for product in products %}
+            <option value="{{ product[2] }}">{{ product[1] }}</option>
+            {% endfor %}
+        </select>
 
-            <input type="number" value="1">
-            <input type="text" placeholder="Price">
-            <input type="text" placeholder="Total">
+            <input type="number" id="quantityInput" value="1" min="1" placeholder="Quantity">
+            <input type="text" id="priceInput" placeholder="Price" readonly>
+            <input type="text" id="totalInput" placeholder="Total" readonly>
+
             <button class="green-btn">Save Utang</button>
-          </div>
+            </div>
 
           <small>* Total is computed automatically</small>
         </div>
@@ -137,17 +169,36 @@
           </div>
 
           <div class="product-list">
-            <div class="product">🥤 <b>Coke 1.5L</b><span>₱20.00</span></div>
-            <div class="product">🍜 <b>Noodles</b><span>₱15.00</span></div>
-            <div class="product">🥫 <b>Sardines</b><span>₱28.00</span></div>
-            <div class="product">🍞 <b>Bread</b><span>₱10.00</span></div>
-            <div class="product">🥚 <b>Egg</b><span>₱10.00</span></div>
+            {% for product in products %}
+              <div class="product">
+                📦 <b>{{ product[1] }}</b>
+                <span>₱{{ "%.2f"|format(product[2]) }}</span>
+              </div>
+            {% endfor %}
           </div>
         </div>
       </div>
     </section>
   </main>
 </div>
+     <script>
+  const itemSelect = document.getElementById("itemSelect");
+  const quantityInput = document.getElementById("quantityInput");
+  const priceInput = document.getElementById("priceInput");
+  const totalInput = document.getElementById("totalInput");
+
+  function computeTotal() {
+    const price = parseFloat(itemSelect.value) || 0;
+    const quantity = parseInt(quantityInput.value) || 0;
+    const total = price * quantity;
+
+    priceInput.value = price ? `₱${price.toFixed(2)}` : "";
+    totalInput.value = total ? `₱${total.toFixed(2)}` : "";
+  }
+
+  itemSelect.addEventListener("change", computeTotal);
+  quantityInput.addEventListener("input", computeTotal);
+</script>
 
 </body>
 </html>
