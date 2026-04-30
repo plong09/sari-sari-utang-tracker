@@ -10,7 +10,7 @@
 <div class="app">
   <aside class="sidebar">
     <h2>🛒 SARI-SARI STORE</h2>
-    <p>Utang Tracker</p>
+    <p>Utang Tracker</p> 
 
     <nav>
       <a class="active">🏠 Dashboard</a>
@@ -79,13 +79,14 @@
           <input type="text" name="name" placeholder="Enter customer name..." required>
           <button class="green-btn" type="submit">+ New Customer</button>
         </form>
+        <input type="text" id="customerSearch" placeholder="Search customer...">
 
         <h3>All Customers</h3>
 
         {% if customers %}
           {% for customer in customers %}
             <a href="/customer/{{ customer[0] }}"
-               class="customer {% if selected_customer and selected_customer[0] == customer[0] %}active-customer{% endif %}">
+               class="customer customer-item {% if selected_customer and selected_customer[0] == customer[0] %}active-customer{% endif %}">
               <strong>{{ customer[1] }}</strong>
               <span>₱ {{ "%.2f"|format(customer[2]) }}</span>
             </a>
@@ -97,12 +98,20 @@
 
       <div class="details">
         {% if selected_customer %}
-          <div class="details-head">
+          
+
+        <div class="details-head">
             <div>
-              <h2>{{ selected_customer[1] }}</h2>
-              <p>Total Unpaid Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
+                <h2>{{ selected_customer[1] }}</h2>
+                <p>Total Unpaid Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
             </div>
-          </div>
+
+            <div class="actions">
+                <a href="/print/{{ selected_customer[0] }}" class="blue-btn">
+                🖨 Print
+                </a>
+            </div>
+            </div>
 
           <table>
             <thead>
@@ -121,7 +130,7 @@
               {% if utang_list %}
                 {% for u in utang_list %}
                   <tr>
-                    <td>-</td>
+                    <td>{{ u[7] if u[7] else "-" }}</td>
                     <td>{{ u[2] }}</td>
                     <td>{{ u[3] }}</td>
                     <td>₱{{ "%.2f"|format(u[4]) }}</td>
@@ -198,7 +207,7 @@
         <div class="products">
           <div class="products-head">
             <h3>Product Management</h3>
-            <input type="text" placeholder="Search product...">
+            <input type="text" id="productSearch" placeholder="Search product...">
           </div>
 
           <form action="/add-product" method="POST" class="product-form">
@@ -209,7 +218,7 @@
 
           <div class="product-list">
             {% for product in products %}
-              <div class="product">
+              <div class="product product-item">
                 📦 <b>{{ product[1] }}</b>
                 <span>₱{{ "%.2f"|format(product[2]) }}</span>
 
@@ -249,6 +258,44 @@
     itemSelect.addEventListener("change", computeTotal);
     quantityInput.addEventListener("input", computeTotal);
   }
+
+  const customerSearch = document.getElementById("customerSearch");
+const customerItems = document.querySelectorAll(".customer-item");
+
+if (customerSearch) {
+  customerSearch.addEventListener("input", () => {
+    const searchValue = customerSearch.value.toLowerCase();
+
+    customerItems.forEach((item) => {
+      const name = item.textContent.toLowerCase();
+
+      if (name.includes(searchValue)) {
+        item.style.display = "block";
+      } else {
+        item.style.display = "none";
+      }
+    });
+  });
+}
+
+const productSearch = document.getElementById("productSearch");
+const productItems = document.querySelectorAll(".product-item");
+
+if (productSearch) {
+  productSearch.addEventListener("input", () => {
+    const searchValue = productSearch.value.toLowerCase();
+
+    productItems.forEach((item) => {
+      const name = item.textContent.toLowerCase();
+
+      if (name.includes(searchValue)) {
+        item.style.display = "grid";
+      } else {
+        item.style.display = "none";
+      }
+    });
+  });
+}
 </script>
 
 </body>

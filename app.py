@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect
 import sqlite3
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -15,15 +16,15 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS customers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL
+        name TEXT
     )
     """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        price REAL NOT NULL
+        name TEXT,
+        price REAL
     )
     """)
 
@@ -38,6 +39,12 @@ def init_db():
         status TEXT DEFAULT 'UNPAID'
     )
     """)
+
+    cursor.execute("PRAGMA table_info(utang)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "date_created" not in columns:
+        cursor.execute("ALTER TABLE utang ADD COLUMN date_created TEXT")
 
     cursor.execute("SELECT COUNT(*) FROM products")
     if cursor.fetchone()[0] == 0:
@@ -58,11 +65,17 @@ def init_db():
 
 def get_customers(cursor):
     cursor.execute("""
-    SELECT customers.id, customers.name, COALESCE(SUM(utang.total), 0)
-    FROM customers
-    LEFT JOIN utang ON customers.id = utang.customer_id
-    GROUP BY customers.id
-    ORDER BY customers.id DESC
+        SELECT customers.id, customers.name,
+        COALESCE(SUM(
+            CASE
+                WHEN utang.status = 'UNPAID' THEN utang.total
+                ELSE 0
+            END
+        ), 0)
+        FROM customers
+        LEFT JOIN utang ON customers.id = utang.customer_id
+        GROUP BY customers.id, customers.name
+        ORDER BY customers.id DESC
     """)
     return cursor.fetchall()
 
@@ -74,15 +87,16 @@ def index():
 
     customers = get_customers(cursor)
 
-    cursor.execute("SELECT * FROM products")
+    cursor.execute("SELECT * FROM products ORDER BY name")
     products = cursor.fetchall()
 
-    cursor.execute("SELECT COALESCE(SUM(total), 0) FROM utang")
+    cursor.execute("SELECT COALESCE(SUM(total), 0) FROM utang WHERE status = 'UNPAID'")
     total_utang = cursor.fetchone()[0]
 
     conn.close()
 
-    return render_template("index.html",
+    return render_template(
+        "index.html",
         customers=customers,
         products=products,
         total_utang=total_utang,
@@ -93,27 +107,21 @@ def index():
 
 
 @app.route("/customer/<int:id>")
-@app.route("/customer/<int:id>")
 def customer(id):
     conn = get_db()
     cursor = conn.cursor()
 
-    # get customers list (left side)
     customers = get_customers(cursor)
 
-    # get products
     cursor.execute("SELECT * FROM products ORDER BY name")
     products = cursor.fetchall()
 
-    # get selected customer
     cursor.execute("SELECT * FROM customers WHERE id=?", (id,))
     selected_customer = cursor.fetchone()
 
-    # get all utang (PAID + UNPAID for table display)
     cursor.execute("SELECT * FROM utang WHERE customer_id=? ORDER BY id DESC", (id,))
     utang_list = cursor.fetchall()
 
-    # ✅ ONLY UNPAID TOTAL (THIS FIXES YOUR PROBLEM)
     cursor.execute("""
         SELECT COALESCE(SUM(total), 0)
         FROM utang
@@ -121,7 +129,6 @@ def customer(id):
     """, (id,))
     selected_total = cursor.fetchone()[0]
 
-    # ✅ DASHBOARD TOTAL (ONLY UNPAID)
     cursor.execute("""
         SELECT COALESCE(SUM(total), 0)
         FROM utang
@@ -150,6 +157,7 @@ def add_customer():
     cursor = conn.cursor()
 
     cursor.execute("INSERT INTO customers (name) VALUES (?)", (name,))
+
     conn.commit()
     conn.close()
 
@@ -165,10 +173,11 @@ def add_product():
     cursor = conn.cursor()
 
     cursor.execute("INSERT INTO products (name, price) VALUES (?, ?)", (name, price))
+
     conn.commit()
     conn.close()
 
-    return redirect(request.referrer)
+    return redirect(request.referrer or "/")
 
 
 @app.route("/delete-product/<int:id>")
@@ -177,10 +186,11 @@ def delete_product(id):
     cursor = conn.cursor()
 
     cursor.execute("DELETE FROM products WHERE id=?", (id,))
+
     conn.commit()
     conn.close()
 
-    return redirect(request.referrer)
+    return redirect(request.referrer or "/")
 
 
 @app.route("/add-utang", methods=["POST"])
@@ -190,14 +200,15 @@ def add_utang():
     qty = int(request.form["quantity"])
     price = float(request.form["price"])
     total = float(request.form["total"])
+    date_created = datetime.now().strftime("%b %d, %Y %I:%M %p")
 
     conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
-    INSERT INTO utang (customer_id, item_name, quantity, price, total)
-    VALUES (?, ?, ?, ?, ?)
-    """, (cid, item, qty, price, total))
+    INSERT INTO utang (customer_id, item_name, quantity, price, total, date_created)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, (cid, item, qty, price, total, date_created))
 
     conn.commit()
     conn.close()
@@ -211,10 +222,24 @@ def delete_utang(id, cid):
     cursor = conn.cursor()
 
     cursor.execute("DELETE FROM utang WHERE id=?", (id,))
+
     conn.commit()
     conn.close()
 
     return redirect(f"/customer/{cid}")
+
+
+@app.route("/mark-paid/<int:utang_id>/<int:customer_id>")
+def mark_paid(utang_id, customer_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE utang SET status = 'PAID' WHERE id = ?", (utang_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(f"/customer/{customer_id}")
 
 
 @app.route("/edit-utang/<int:utang_id>/<int:customer_id>", methods=["GET", "POST"])
@@ -222,7 +247,6 @@ def edit_utang(utang_id, customer_id):
     conn = get_db()
     cursor = conn.cursor()
 
-    # IF USER CLICK SAVE
     if request.method == "POST":
         item_name = request.form["item_name"]
         quantity = int(request.form["quantity"])
@@ -240,7 +264,6 @@ def edit_utang(utang_id, customer_id):
 
         return redirect(f"/customer/{customer_id}")
 
-    # GET DATA FOR EDIT PAGE
     cursor.execute("SELECT * FROM utang WHERE id = ?", (utang_id,))
     utang = cursor.fetchone()
 
@@ -256,26 +279,38 @@ def edit_utang(utang_id, customer_id):
         customer_id=customer_id
     )
 
-@app.route("/mark-paid/<int:utang_id>/<int:customer_id>")
-def mark_paid(utang_id, customer_id):
+
+@app.route("/print/<int:customer_id>")
+def print_receipt(customer_id):
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "UPDATE utang SET status = 'PAID' WHERE id = ?",
-        (utang_id,)
-    )
+    cursor.execute("SELECT * FROM customers WHERE id=?", (customer_id,))
+    customer = cursor.fetchone()
 
-    conn.commit()
+    cursor.execute("""
+        SELECT * FROM utang
+        WHERE customer_id=? AND status='UNPAID'
+    """, (customer_id,))
+    utang_list = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT COALESCE(SUM(total),0)
+        FROM utang
+        WHERE customer_id=? AND status='UNPAID'
+    """, (customer_id,))
+    total = cursor.fetchone()[0]
+
     conn.close()
 
-    return redirect(f"/customer/{customer_id}")
+    return render_template(
+        "print.html",
+        customer=customer,
+        utang_list=utang_list,
+        total=total
+    )
 
 
 if __name__ == "__main__":
-
-
-    
     init_db()
-    app.run(debug=True) 
-
+    app.run(debug=True)
