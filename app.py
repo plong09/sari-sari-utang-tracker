@@ -63,10 +63,7 @@ def get_customers(cursor):
     cursor.execute("""
         SELECT customers.id, customers.name,
         COALESCE(SUM(
-            CASE
-                WHEN utang.status = 'UNPAID' THEN utang.total
-                ELSE 0
-            END
+            CASE WHEN utang.status='UNPAID' THEN utang.total ELSE 0 END
         ), 0)
         FROM customers
         LEFT JOIN utang ON customers.id = utang.customer_id
@@ -101,12 +98,26 @@ def get_common_data(page="dashboard", selected_customer=None, utang_list=None, s
         SELECT customers.name, COALESCE(SUM(utang.total),0) AS balance
         FROM customers
         JOIN utang ON customers.id = utang.customer_id
-        WHERE utang.status = 'UNPAID'
+        WHERE utang.status='UNPAID'
         GROUP BY customers.id, customers.name
         ORDER BY balance DESC
         LIMIT 1
     """)
     top_customer = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT customers.name, COALESCE(SUM(utang.total),0) AS balance
+        FROM customers
+        JOIN utang ON customers.id = utang.customer_id
+        WHERE utang.status='UNPAID'
+        GROUP BY customers.id, customers.name
+        ORDER BY balance DESC
+        LIMIT 5
+    """)
+    customer_chart = cursor.fetchall()
+
+    customer_chart_names = [row[0] for row in customer_chart]
+    customer_chart_totals = [row[1] for row in customer_chart]
 
     cursor.execute("""
         SELECT utang.id, customers.name, utang.item_name, utang.quantity,
@@ -127,6 +138,8 @@ def get_common_data(page="dashboard", selected_customer=None, utang_list=None, s
         "total_paid": total_paid,
         "today_utang": today_utang,
         "top_customer": top_customer,
+        "customer_chart_names": customer_chart_names,
+        "customer_chart_totals": customer_chart_totals,
         "selected_customer": selected_customer,
         "utang_list": utang_list or [],
         "selected_total": selected_total,
@@ -169,7 +182,7 @@ def customer(id):
     utang_list = cursor.fetchall()
 
     cursor.execute("""
-        SELECT COALESCE(SUM(total), 0)
+        SELECT COALESCE(SUM(total),0)
         FROM utang
         WHERE customer_id=? AND status='UNPAID'
     """, (id,))
@@ -179,12 +192,7 @@ def customer(id):
 
     return render_template(
         "index.html",
-        **get_common_data(
-            page="dashboard",
-            selected_customer=selected_customer,
-            utang_list=utang_list,
-            selected_total=selected_total
-        )
+        **get_common_data("dashboard", selected_customer, utang_list, selected_total)
     )
 
 @app.route("/add-customer", methods=["POST"])
@@ -258,7 +266,7 @@ def delete_utang(id, cid):
 def mark_paid(utang_id, customer_id):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("UPDATE utang SET status = 'PAID' WHERE id = ?", (utang_id,))
+    cursor.execute("UPDATE utang SET status='PAID' WHERE id=?", (utang_id,))
     conn.commit()
     conn.close()
 
@@ -286,7 +294,7 @@ def edit_utang(utang_id, customer_id):
 
         return redirect(f"/customer/{customer_id}")
 
-    cursor.execute("SELECT * FROM utang WHERE id = ?", (utang_id,))
+    cursor.execute("SELECT * FROM utang WHERE id=?", (utang_id,))
     utang = cursor.fetchone()
 
     cursor.execute("SELECT * FROM products ORDER BY name")
