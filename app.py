@@ -93,30 +93,46 @@ def index():
 
 
 @app.route("/customer/<int:id>")
+@app.route("/customer/<int:id>")
 def customer(id):
     conn = get_db()
     cursor = conn.cursor()
 
+    # get customers list (left side)
     customers = get_customers(cursor)
 
-    cursor.execute("SELECT * FROM products")
+    # get products
+    cursor.execute("SELECT * FROM products ORDER BY name")
     products = cursor.fetchall()
 
+    # get selected customer
     cursor.execute("SELECT * FROM customers WHERE id=?", (id,))
     selected_customer = cursor.fetchone()
 
-    cursor.execute("SELECT * FROM utang WHERE customer_id=?", (id,))
+    # get all utang (PAID + UNPAID for table display)
+    cursor.execute("SELECT * FROM utang WHERE customer_id=? ORDER BY id DESC", (id,))
     utang_list = cursor.fetchall()
 
-    cursor.execute("SELECT COALESCE(SUM(total),0) FROM utang WHERE customer_id=?", (id,))
+    # ✅ ONLY UNPAID TOTAL (THIS FIXES YOUR PROBLEM)
+    cursor.execute("""
+        SELECT COALESCE(SUM(total), 0)
+        FROM utang
+        WHERE customer_id=? AND status='UNPAID'
+    """, (id,))
     selected_total = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COALESCE(SUM(total),0) FROM utang")
+    # ✅ DASHBOARD TOTAL (ONLY UNPAID)
+    cursor.execute("""
+        SELECT COALESCE(SUM(total), 0)
+        FROM utang
+        WHERE status='UNPAID'
+    """)
     total_utang = cursor.fetchone()[0]
 
     conn.close()
 
-    return render_template("index.html",
+    return render_template(
+        "index.html",
         customers=customers,
         products=products,
         total_utang=total_utang,
@@ -239,6 +255,21 @@ def edit_utang(utang_id, customer_id):
         products=products,
         customer_id=customer_id
     )
+
+@app.route("/mark-paid/<int:utang_id>/<int:customer_id>")
+def mark_paid(utang_id, customer_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE utang SET status = 'PAID' WHERE id = ?",
+        (utang_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(f"/customer/{customer_id}")
 
 
 if __name__ == "__main__":

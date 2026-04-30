@@ -22,13 +22,10 @@
 
     <div class="summary">
       <h3>Quick Summary</h3>
-
       <p>Total Utang</p>
       <strong>₱ {{ "%.2f"|format(total_utang) }}</strong>
-
       <p>Customers</p>
       <strong>{{ customers|length }}</strong>
-
       <p>Products</p>
       <strong>{{ products|length }}</strong>
     </div>
@@ -44,7 +41,7 @@
       <div class="stat">
         <span>💰</span>
         <div>
-          <p>Total Utang</p>
+          <p>Total Unpaid Utang</p>
           <h2>₱ {{ "%.2f"|format(total_utang) }}</h2>
         </div>
       </div>
@@ -103,12 +100,7 @@
           <div class="details-head">
             <div>
               <h2>{{ selected_customer[1] }}</h2>
-              <p>Total Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
-            </div>
-
-            <div class="actions">
-              <button class="blue-btn">🖨 Print</button>
-              <button class="yellow-btn">Mark as Paid</button>
+              <p>Total Unpaid Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
             </div>
           </div>
 
@@ -134,8 +126,21 @@
                     <td>{{ u[3] }}</td>
                     <td>₱{{ "%.2f"|format(u[4]) }}</td>
                     <td>₱{{ "%.2f"|format(u[5]) }}</td>
-                    <td><span class="badge unpaid">{{ u[6] }}</span></td>
                     <td>
+                      <span class="badge {% if u[6] == 'PAID' %}paid{% else %}unpaid{% endif %}">
+                        {{ u[6] }}
+                      </span>
+                    </td>
+                                            <td>
+                        {% if u[6] == 'UNPAID' %}
+                            <a href="/mark-paid/{{ u[0] }}/{{ selected_customer[0] }}"
+                            onclick="return confirm('Mark this item as paid?')">
+                            ✅
+                            </a>
+                        {% else %}
+                            <span class="paid-text">Paid</span>
+                        {% endif %}
+
                         <a href="/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}">✏️</a>
 
                         <a href="/delete-utang/{{ u[0] }}/{{ selected_customer[0] }}"
@@ -143,7 +148,7 @@
                             🗑️
                         </a>
                         </td>
-                  </tr>
+                                        </tr>
                 {% endfor %}
               {% else %}
                 <tr>
@@ -154,7 +159,7 @@
           </table>
 
           <div class="total-row">
-            TOTAL UTANG: <strong>₱ {{ "%.2f"|format(selected_total) }}</strong>
+            TOTAL UNPAID UTANG: <strong>₱ {{ "%.2f"|format(selected_total) }}</strong>
           </div>
 
           <div class="form-card">

@@ -12,11 +12,11 @@
     <a href="/customer/{{ customer_id }}" class="back-link">← Back</a>
 
     <h1>Edit Utang</h1>
+    <p>Update item, quantity, or price.</p>
 
     <form method="POST">
-
       <label>Item</label>
-      <select name="item_name" id="editItemSelect">
+      <select name="item_name" id="editItemSelect" required>
         {% for product in products %}
           <option value="{{ product[1] }}"
                   data-price="{{ product[2] }}"
@@ -27,16 +27,15 @@
       </select>
 
       <label>Quantity</label>
-      <input type="number" name="quantity" id="editQty" value="{{ utang[3] }}">
+      <input type="number" name="quantity" id="editQty" value="{{ utang[3] }}" min="1" required>
 
       <label>Price</label>
-      <input type="text" name="price" id="editPrice" value="{{ utang[4] }}">
+      <input type="text" name="price" id="editPrice" value="{{ utang[4] }}" required>
 
       <label>Total</label>
       <input type="text" id="editTotal" value="{{ utang[5] }}" readonly>
 
       <button class="green-btn" type="submit">Save Changes</button>
-
     </form>
   </div>
 </div>
