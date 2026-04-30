@@ -22,8 +22,9 @@
 
     <div class="summary">
       <h3>Quick Summary</h3>
+
       <p>Total Utang</p>
-      <strong>₱ 0.00</strong>
+      <strong>₱ {{ "%.2f"|format(total_utang) }}</strong>
 
       <p>Customers</p>
       <strong>{{ customers|length }}</strong>
@@ -44,7 +45,7 @@
         <span>💰</span>
         <div>
           <p>Total Utang</p>
-          <h2>₱ 0.00</h2>
+          <h2>₱ {{ "%.2f"|format(total_utang) }}</h2>
         </div>
       </div>
 
@@ -67,8 +68,8 @@
       <div class="stat">
         <span>🧾</span>
         <div>
-          <p>Today's Added</p>
-          <h2>₱ 0.00</h2>
+          <p>Records</p>
+          <h2>{{ utang_list|length }}</h2>
         </div>
       </div>
     </section>
@@ -89,7 +90,7 @@
             <a href="/customer/{{ customer[0] }}"
                class="customer {% if selected_customer and selected_customer[0] == customer[0] %}active-customer{% endif %}">
               <strong>{{ customer[1] }}</strong>
-              <span>₱ 0.00</span>
+              <span>₱ {{ "%.2f"|format(customer[2]) }}</span>
             </a>
           {% endfor %}
         {% else %}
@@ -102,11 +103,10 @@
           <div class="details-head">
             <div>
               <h2>{{ selected_customer[1] }}</h2>
-              <p>Total Utang: <b>₱ 0.00</b></p>
+              <p>Total Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
             </div>
 
             <div class="actions">
-              <button class="green-btn">+ Add Utang</button>
               <button class="blue-btn">🖨 Print</button>
               <button class="yellow-btn">Mark as Paid</button>
             </div>
@@ -124,43 +124,64 @@
                 <th>Action</th>
               </tr>
             </thead>
+
             <tbody>
-              <tr>
-                <td colspan="7">No utang records yet.</td>
-              </tr>
+              {% if utang_list %}
+                {% for u in utang_list %}
+                  <tr>
+                    <td>-</td>
+                    <td>{{ u[2] }}</td>
+                    <td>{{ u[3] }}</td>
+                    <td>₱{{ "%.2f"|format(u[4]) }}</td>
+                    <td>₱{{ "%.2f"|format(u[5]) }}</td>
+                    <td><span class="badge unpaid">{{ u[6] }}</span></td>
+                    <td>✏️ 🗑️ 🖨️</td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="7">No utang records yet.</td>
+                </tr>
+              {% endif %}
             </tbody>
           </table>
 
           <div class="total-row">
-            TOTAL UTANG: <strong>₱ 0.00</strong>
+            TOTAL UTANG: <strong>₱ {{ "%.2f"|format(selected_total) }}</strong>
+          </div>
+
+          <div class="form-card">
+            <h3>Add New Utang</h3>
+
+            <form action="/add-utang" method="POST">
+              <input type="hidden" name="customer_id" value="{{ selected_customer[0] }}">
+
+              <div class="form-grid">
+                <select name="item_name" id="itemSelect" required>
+                  <option value="">Select item...</option>
+                  {% for product in products %}
+                    <option value="{{ product[1] }}" data-price="{{ product[2] }}">
+                      {{ product[1] }}
+                    </option>
+                  {% endfor %}
+                </select>
+
+                <input type="number" name="quantity" id="quantityInput" value="1" min="1" required>
+                <input type="text" name="price" id="priceInput" placeholder="Price" readonly required>
+                <input type="text" name="total" id="totalInput" placeholder="Total" readonly required>
+
+                <button class="green-btn" type="submit">Save Utang</button>
+              </div>
+            </form>
+
+            <small>* Total is computed automatically</small>
           </div>
         {% else %}
           <div class="empty-state">
             <h2>Select a customer</h2>
-            <p>Click a customer from the list to view their utang records.</p>
+            <p>Click a customer from the list to view and add utang records.</p>
           </div>
         {% endif %}
-
-        <div class="form-card">
-          <h3>Add New Utang</h3>
-
-        <div class="form-grid">
-            <select id="itemSelect">
-            <option value="">Select item...</option>
-            {% for product in products %}
-            <option value="{{ product[2] }}">{{ product[1] }}</option>
-            {% endfor %}
-        </select>
-
-            <input type="number" id="quantityInput" value="1" min="1" placeholder="Quantity">
-            <input type="text" id="priceInput" placeholder="Price" readonly>
-            <input type="text" id="totalInput" placeholder="Total" readonly>
-
-            <button class="green-btn">Save Utang</button>
-            </div>
-
-          <small>* Total is computed automatically</small>
-        </div>
 
         <div class="products">
           <div class="products-head">
@@ -181,23 +202,29 @@
     </section>
   </main>
 </div>
-     <script>
+
+<script>
   const itemSelect = document.getElementById("itemSelect");
   const quantityInput = document.getElementById("quantityInput");
   const priceInput = document.getElementById("priceInput");
   const totalInput = document.getElementById("totalInput");
 
   function computeTotal() {
-    const price = parseFloat(itemSelect.value) || 0;
+    if (!itemSelect) return;
+
+    const selectedOption = itemSelect.options[itemSelect.selectedIndex];
+    const price = parseFloat(selectedOption.getAttribute("data-price")) || 0;
     const quantity = parseInt(quantityInput.value) || 0;
     const total = price * quantity;
 
-    priceInput.value = price ? `₱${price.toFixed(2)}` : "";
-    totalInput.value = total ? `₱${total.toFixed(2)}` : "";
+    priceInput.value = price ? price.toFixed(2) : "";
+    totalInput.value = total ? total.toFixed(2) : "";
   }
 
-  itemSelect.addEventListener("change", computeTotal);
-  quantityInput.addEventListener("input", computeTotal);
+  if (itemSelect) {
+    itemSelect.addEventListener("change", computeTotal);
+    quantityInput.addEventListener("input", computeTotal);
+  }
 </script>
 
 </body>
