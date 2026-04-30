@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Sari-Sari Utang Tracker</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -12,14 +13,14 @@
     <h2>🛒 SARI-SARI STORE</h2>
     <p>Utang Tracker</p>
 
-        <nav>
-    <a href="/" class="{% if page == 'dashboard' %}active{% endif %}">🏠 Dashboard</a>
-    <a href="/customers" class="{% if page == 'customers' %}active{% endif %}">👥 Customers</a>
-    <a href="/products" class="{% if page == 'products' %}active{% endif %}">📦 Products</a>
-    <a href="/records" class="{% if page == 'records' %}active{% endif %}">🧾 Utang Records</a>
-    <a href="/reports" class="{% if page == 'reports' %}active{% endif %}">📊 Reports</a>
-    <a href="/settings" class="{% if page == 'settings' %}active{% endif %}">⚙️ Settings</a>
-        </nav>
+    <nav>
+      <a href="/" class="{% if page == 'dashboard' %}active{% endif %}">🏠 Dashboard</a>
+      <a href="/customers" class="{% if page == 'customers' %}active{% endif %}">👥 Customers</a>
+      <a href="/products" class="{% if page == 'products' %}active{% endif %}">📦 Products</a>
+      <a href="/records" class="{% if page == 'records' %}active{% endif %}">🧾 Utang Records</a>
+      <a href="/reports" class="{% if page == 'reports' %}active{% endif %}">📊 Reports</a>
+      <a href="/settings" class="{% if page == 'settings' %}active{% endif %}">⚙️ Settings</a>
+    </nav>
 
     <div class="summary">
       <h3>Quick Summary</h3>
@@ -282,52 +283,62 @@
     </section>
     {% endif %}
 
-
     {% if page == "reports" %}
-<section class="details">
-  <h2>Reports</h2>
+    <section class="details">
+      <h2>Reports</h2>
 
-  <div class="cards">
-    <div class="stat">
-      <span>💸</span>
-      <div>
-        <p>Total Unpaid</p>
-        <h2>₱ {{ "%.2f"|format(total_utang) }}</h2>
+      <div class="cards">
+        <div class="stat">
+          <span>💸</span>
+          <div>
+            <p>Total Unpaid</p>
+            <h2>₱ {{ "%.2f"|format(total_utang) }}</h2>
+          </div>
+        </div>
+
+        <div class="stat">
+          <span>💰</span>
+          <div>
+            <p>Total Paid</p>
+            <h2>₱ {{ "%.2f"|format(total_paid) }}</h2>
+          </div>
+        </div>
+
+        <div class="stat">
+          <span>📅</span>
+          <div>
+            <p>Today's Added Utang</p>
+            <h2>₱ {{ "%.2f"|format(today_utang) }}</h2>
+          </div>
+        </div>
+
+        <div class="stat">
+          <span>👑</span>
+          <div>
+            <p>Top Customer</p>
+            {% if top_customer %}
+              <h2>{{ top_customer[0] }}</h2>
+              <p>₱ {{ "%.2f"|format(top_customer[1]) }}</p>
+            {% else %}
+              <h2>None</h2>
+            {% endif %}
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="stat">
-      <span>💰</span>
-      <div>
-        <p>Total Paid</p>
-        <h2>₱ {{ "%.2f"|format(total_paid) }}</h2>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Top Customers with Unpaid Balance</h3>
+          <canvas id="customerChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <h3>Paid vs Unpaid</h3>
+          <canvas id="paidChart"></canvas>
+        </div>
       </div>
-    </div>
-
-    <div class="stat">
-      <span>📅</span>
-      <div>
-        <p>Today's Added  Utang</p>
-        <h2>₱ {{ "%.2f"|format(today_utang) }}</h2>
-      </div>
-    </div>
-
-    <div class="stat">
-      <span>👑</span>
-      <div>
-        <p>Top Customer</p>
-        {% if top_customer %}
-          <h2>{{ top_customer[0] }}</h2>
-          <p>₱ {{ "%.2f"|format(top_customer[1]) }}</p>
-        {% else %}
-          <h2>None</h2>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
-
+    </section>
+    {% endif %}
 
     {% if page == "settings" %}
     <section class="details">
@@ -388,10 +399,91 @@
       });
     });
   }
-  
 
+  if ("{{ page }}" === "reports") {
+    const customerNames = {{ customer_chart_names|tojson }};
+    const customerTotals = {{ customer_chart_totals|tojson }};
+    const unpaidTotal = {{ total_utang|tojson }};
+    const paidTotal = {{ total_paid|tojson }};
 
-  
+    const moneyFormat = (value) => "₱" + Number(value).toLocaleString();
+
+    const customerCanvas = document.getElementById("customerChart");
+    const paidCanvas = document.getElementById("paidChart");
+
+    if (customerCanvas) {
+      new Chart(customerCanvas, {
+        type: "bar",
+        data: {
+          labels: customerNames,
+          datasets: [{
+            label: "Unpaid Balance",
+            data: customerTotals,
+            backgroundColor: "rgba(53, 168, 77, 0.85)",
+            borderColor: "#16803a",
+            borderWidth: 1,
+            borderRadius: 8,
+            barThickness: 55
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return "Unpaid: " + moneyFormat(context.raw);
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return "₱" + value;
+                }
+              }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    if (paidCanvas) {
+      new Chart(paidCanvas, {
+        type: "doughnut",
+        data: {
+          labels: ["Unpaid", "Paid"],
+          datasets: [{
+            data: [unpaidTotal, paidTotal],
+            backgroundColor: ["#ef4444", "#35a84d"],
+            borderWidth: 4,
+            hoverOffset: 10
+          }]
+        },
+        options: {
+          responsive: true,
+          cutout: "65%",
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.label + ": " + moneyFormat(context.raw);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
 </script>
 
 </body>
