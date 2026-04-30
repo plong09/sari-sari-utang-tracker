@@ -10,15 +10,16 @@
 <div class="app">
   <aside class="sidebar">
     <h2>🛒 SARI-SARI STORE</h2>
-    <p>Utang Tracker</p> 
+    <p>Utang Tracker</p>
 
-    <nav>
-      <a class="active">🏠 Dashboard</a>
-      <a>👥 Customers</a>
-      <a>📦 Products</a>
-      <a>🧾 Utang Records</a>
-      <a>⚙️ Settings</a>
-    </nav>
+        <nav>
+    <a href="/" class="{% if page == 'dashboard' %}active{% endif %}">🏠 Dashboard</a>
+    <a href="/customers" class="{% if page == 'customers' %}active{% endif %}">👥 Customers</a>
+    <a href="/products" class="{% if page == 'products' %}active{% endif %}">📦 Products</a>
+    <a href="/records" class="{% if page == 'records' %}active{% endif %}">🧾 Utang Records</a>
+    <a href="/reports" class="{% if page == 'reports' %}active{% endif %}">📊 Reports</a>
+    <a href="/settings" class="{% if page == 'settings' %}active{% endif %}">⚙️ Settings</a>
+        </nav>
 
     <div class="summary">
       <h3>Quick Summary</h3>
@@ -66,22 +67,16 @@
         <span>🧾</span>
         <div>
           <p>Records</p>
-          <h2>{{ utang_list|length }}</h2>
+          <h2>{{ all_records|length }}</h2>
         </div>
       </div>
     </section>
 
+    {% if page == "dashboard" %}
     <section class="content-grid">
       <div class="customer-panel">
-        <h3>Add Customer</h3>
-
-        <form action="/add-customer" method="POST">
-          <input type="text" name="name" placeholder="Enter customer name..." required>
-          <button class="green-btn" type="submit">+ New Customer</button>
-        </form>
+        <h3>Customers</h3>
         <input type="text" id="customerSearch" placeholder="Search customer...">
-
-        <h3>All Customers</h3>
 
         {% if customers %}
           {% for customer in customers %}
@@ -98,20 +93,16 @@
 
       <div class="details">
         {% if selected_customer %}
-          
-
-        <div class="details-head">
+          <div class="details-head">
             <div>
-                <h2>{{ selected_customer[1] }}</h2>
-                <p>Total Unpaid Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
+              <h2>{{ selected_customer[1] }}</h2>
+              <p>Total Unpaid Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
             </div>
 
             <div class="actions">
-                <a href="/print/{{ selected_customer[0] }}" class="blue-btn">
-                🖨 Print
-                </a>
+              <a href="/print/{{ selected_customer[0] }}" class="blue-btn">🖨 Print</a>
             </div>
-            </div>
+          </div>
 
           <table>
             <thead>
@@ -140,24 +131,20 @@
                         {{ u[6] }}
                       </span>
                     </td>
-                                            <td>
-                        {% if u[6] == 'UNPAID' %}
-                            <a href="/mark-paid/{{ u[0] }}/{{ selected_customer[0] }}"
-                            onclick="return confirm('Mark this item as paid?')">
-                            ✅
-                            </a>
-                        {% else %}
-                            <span class="paid-text">Paid</span>
-                        {% endif %}
+                    <td>
+                      {% if u[6] == 'UNPAID' %}
+                        <a href="/mark-paid/{{ u[0] }}/{{ selected_customer[0] }}"
+                           onclick="return confirm('Mark this item as paid?')">✅</a>
+                      {% else %}
+                        <span class="paid-text">Paid</span>
+                      {% endif %}
 
-                        <a href="/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}">✏️</a>
+                      <a href="/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}">✏️</a>
 
-                        <a href="/delete-utang/{{ u[0] }}/{{ selected_customer[0] }}"
-                            onclick="return confirm('Delete this utang record?')">
-                            🗑️
-                        </a>
-                        </td>
-                                        </tr>
+                      <a href="/delete-utang/{{ u[0] }}/{{ selected_customer[0] }}"
+                         onclick="return confirm('Delete this utang record?')">🗑️</a>
+                    </td>
+                  </tr>
                 {% endfor %}
               {% else %}
                 <tr>
@@ -203,36 +190,151 @@
             <p>Click a customer from the list to view and add utang records.</p>
           </div>
         {% endif %}
-
-        <div class="products">
-          <div class="products-head">
-            <h3>Product Management</h3>
-            <input type="text" id="productSearch" placeholder="Search product...">
-          </div>
-
-          <form action="/add-product" method="POST" class="product-form">
-            <input type="text" name="name" placeholder="Product name" required>
-            <input type="number" name="price" placeholder="Price" step="0.01" required>
-            <button class="green-btn" type="submit">+ Add Product</button>
-          </form>
-
-          <div class="product-list">
-            {% for product in products %}
-              <div class="product product-item">
-                📦 <b>{{ product[1] }}</b>
-                <span>₱{{ "%.2f"|format(product[2]) }}</span>
-
-                <a href="/delete-product/{{ product[0] }}"
-                   onclick="return confirm('Delete this product?')"
-                   class="delete-product">
-                  Delete
-                </a>
-              </div>
-            {% endfor %}
-          </div>
-        </div>
       </div>
     </section>
+    {% endif %}
+
+    {% if page == "customers" %}
+    <section class="details">
+      <h2>Customer Management</h2>
+
+      <form action="/add-customer" method="POST">
+        <input type="text" name="name" placeholder="Enter customer name..." required>
+        <button class="green-btn" type="submit">+ New Customer</button>
+      </form>
+
+      <input type="text" id="customerSearch" placeholder="Search customer...">
+
+      {% for customer in customers %}
+        <a href="/customer/{{ customer[0] }}" class="customer customer-item">
+          <strong>{{ customer[1] }}</strong>
+          <span>₱ {{ "%.2f"|format(customer[2]) }}</span>
+        </a>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if page == "products" %}
+    <section class="products">
+      <div class="products-head">
+        <h3>Product Management</h3>
+        <input type="text" id="productSearch" placeholder="Search product...">
+      </div>
+
+      <form action="/add-product" method="POST" class="product-form">
+        <input type="text" name="name" placeholder="Product name" required>
+        <input type="number" name="price" placeholder="Price" step="0.01" required>
+        <button class="green-btn" type="submit">+ Add Product</button>
+      </form>
+
+      <div class="product-list">
+        {% for product in products %}
+          <div class="product product-item">
+            📦 <b>{{ product[1] }}</b>
+            <span>₱{{ "%.2f"|format(product[2]) }}</span>
+
+            <a href="/delete-product/{{ product[0] }}"
+               onclick="return confirm('Delete this product?')"
+               class="delete-product">
+              Delete
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if page == "records" %}
+    <section class="details">
+      <h2>All Utang Records</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for r in all_records %}
+            <tr>
+              <td>{{ r[7] if r[7] else "-" }}</td>
+              <td>{{ r[1] }}</td>
+              <td>{{ r[2] }}</td>
+              <td>{{ r[3] }}</td>
+              <td>₱{{ "%.2f"|format(r[4]) }}</td>
+              <td>₱{{ "%.2f"|format(r[5]) }}</td>
+              <td>
+                <span class="badge {% if r[6] == 'PAID' %}paid{% else %}unpaid{% endif %}">
+                  {{ r[6] }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+
+    {% if page == "reports" %}
+<section class="details">
+  <h2>Reports</h2>
+
+  <div class="cards">
+    <div class="stat">
+      <span>💸</span>
+      <div>
+        <p>Total Unpaid</p>
+        <h2>₱ {{ "%.2f"|format(total_utang) }}</h2>
+      </div>
+    </div>
+
+    <div class="stat">
+      <span>💰</span>
+      <div>
+        <p>Total Paid</p>
+        <h2>₱ {{ "%.2f"|format(total_paid) }}</h2>
+      </div>
+    </div>
+
+    <div class="stat">
+      <span>📅</span>
+      <div>
+        <p>Today's Added  Utang</p>
+        <h2>₱ {{ "%.2f"|format(today_utang) }}</h2>
+      </div>
+    </div>
+
+    <div class="stat">
+      <span>👑</span>
+      <div>
+        <p>Top Customer</p>
+        {% if top_customer %}
+          <h2>{{ top_customer[0] }}</h2>
+          <p>₱ {{ "%.2f"|format(top_customer[1]) }}</p>
+        {% else %}
+          <h2>None</h2>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+    {% if page == "settings" %}
+    <section class="details">
+      <h2>Settings</h2>
+      <p>This section is reserved for future settings.</p>
+    </section>
+    {% endif %}
   </main>
 </div>
 
@@ -260,42 +362,38 @@
   }
 
   const customerSearch = document.getElementById("customerSearch");
-const customerItems = document.querySelectorAll(".customer-item");
+  const customerItems = document.querySelectorAll(".customer-item");
 
-if (customerSearch) {
-  customerSearch.addEventListener("input", () => {
-    const searchValue = customerSearch.value.toLowerCase();
+  if (customerSearch) {
+    customerSearch.addEventListener("input", () => {
+      const searchValue = customerSearch.value.toLowerCase();
 
-    customerItems.forEach((item) => {
-      const name = item.textContent.toLowerCase();
-
-      if (name.includes(searchValue)) {
-        item.style.display = "block";
-      } else {
-        item.style.display = "none";
-      }
+      customerItems.forEach((item) => {
+        const name = item.textContent.toLowerCase();
+        item.style.display = name.includes(searchValue) ? "block" : "none";
+      });
     });
-  });
-}
+  }
 
-const productSearch = document.getElementById("productSearch");
-const productItems = document.querySelectorAll(".product-item");
+  const productSearch = document.getElementById("productSearch");
+  const productItems = document.querySelectorAll(".product-item");
 
-if (productSearch) {
-  productSearch.addEventListener("input", () => {
-    const searchValue = productSearch.value.toLowerCase();
+  if (productSearch) {
+    productSearch.addEventListener("input", () => {
+      const searchValue = productSearch.value.toLowerCase();
 
-    productItems.forEach((item) => {
-      const name = item.textContent.toLowerCase();
-
-      if (name.includes(searchValue)) {
-        item.style.display = "grid";
-      } else {
-        item.style.display = "none";
-      }
+      productItems.forEach((item) => {
+        const name = item.textContent.toLowerCase();
+        item.style.display = name.includes(searchValue) ? "grid" : "none";
+      });
     });
-  });
-}
+  }
+  
+
+
+
+
+  
 </script>
 
 </body>
