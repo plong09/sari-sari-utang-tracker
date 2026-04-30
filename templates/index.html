@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sari-Sari Utang Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <h2>🛒 SARI-SARI STORE</h2>
+    <p>Utang Tracker</p>
+
+    <nav>
+      <a class="active">🏠 Dashboard</a>
+      <a>👥 Customers</a>
+      <a>📦 Products</a>
+      <a>🧾 Utang Records</a>
+      <a>⚙️ Settings</a>
+    </nav>
+
+    <div class="summary">
+      <h3>Quick Summary</h3>
+      <p>Total Utang</p>
+      <strong>₱ 0.00</strong>
+      <p>Customers</p>
+      <strong>{{ customers|length }}</strong>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button>☰</button>
+      <div>👤 Owner</div>
+    </header>
+
+    <section class="cards">
+      <div class="stat"><span>💰</span><div><p>Total Utang</p><h2>₱ 0.00</h2></div></div>
+      <div class="stat"><span>👥</span><div><p>Customers</p><h2>{{ customers|length }}</h2></div></div>
+      <div class="stat"><span>📦</span><div><p>Products Listed</p><h2>0</h2></div></div>
+      <div class="stat"><span>🧾</span><div><p>Today's Added</p><h2>₱ 0.00</h2></div></div>
+    </section>
+
+    <section class="content-grid">
+      <div class="customer-panel">
+        <h3>Add Customer</h3>
+
+        <form action="/add-customer" method="POST">
+          <input type="text" name="name" placeholder="Enter customer name..." required>
+          <button class="green-btn" type="submit">+ New Customer</button>
+        </form>
+
+        <h3>All Customers</h3>
+
+        {% if customers %}
+          {% for customer in customers %}
+            <a href="/customer/{{ customer[0] }}"
+               class="customer {% if selected_customer and selected_customer[0] == customer[0] %}active-customer{% endif %}">
+              <strong>{{ customer[1] }}</strong>
+              <span>₱ 0.00</span>
+            </a>
+          {% endfor %}
+        {% else %}
+          <p class="empty">No customers yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="details">
+        {% if selected_customer %}
+          <div class="details-head">
+            <div>
+              <h2>{{ selected_customer[1] }}</h2>
+              <p>Total Utang: <b>₱ 0.00</b></p>
+            </div>
+
+            <div class="actions">
+              <button class="green-btn">+ Add Utang</button>
+              <button class="blue-btn">🖨 Print</button>
+              <button class="yellow-btn">Mark as Paid</button>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="7">No utang records yet.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="total-row">
+            TOTAL UTANG: <strong>₱ 0.00</strong>
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <h2>Select a customer</h2>
+            <p>Click a customer from the list to view their utang records.</p>
+          </div>
+        {% endif %}
+
+        <div class="form-card">
+          <h3>Add New Utang</h3>
+
+          <div class="form-grid">
+            <select>
+              <option>Select item...</option>
+              <option>Coke 1.5L</option>
+              <option>Noodles</option>
+              <option>Sardines</option>
+            </select>
+
+            <input type="number" value="1">
+            <input type="text" placeholder="Price">
+            <input type="text" placeholder="Total">
+            <button class="green-btn">Save Utang</button>
+          </div>
+
+          <small>* Total is computed automatically</small>
+        </div>
+
+        <div class="products">
+          <div class="products-head">
+            <h3>Product List</h3>
+            <input type="text" placeholder="Search product...">
+          </div>
+
+          <div class="product-list">
+            <div class="product">🥤 <b>Coke 1.5L</b><span>₱20.00</span></div>
+            <div class="product">🍜 <b>Noodles</b><span>₱15.00</span></div>
+            <div class="product">🥫 <b>Sardines</b><span>₱28.00</span></div>
+            <div class="product">🍞 <b>Bread</b><span>₱10.00</span></div>
+            <div class="product">🥚 <b>Egg</b><span>₱10.00</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+</body>
+</html>
