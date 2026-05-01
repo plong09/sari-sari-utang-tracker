@@ -2,39 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Login | Sari-Sari Utang Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Gundaya Store</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"> <!-- Font Awesome -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<div class="login-page">
-  <div class="login-card">
-    <div class="login-logo">🛒</div>
+  <!-- Login Form -->
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-logo">
+        <i class="fas fa-store-alt"></i> <!-- Modern Store Icon -->
+      </div>
+      <div class="center">
+        <h1>Welcome to Gundaya Store</h1>
+        <p>Please log in to manage your utang tracker.</p>
+      </div>
+      
 
-    <h1>Sari-Sari Store</h1>
-    <p>Login to manage your utang tracker</p>
+      {% if error %}
+        <div class="login-error">{{ error }}</div>
+      {% endif %}
 
-    {% if error %}
-      <div class="login-error">{{ error }}</div>
-    {% endif %}
+      <form method="POST">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Enter username" required>
 
-    <form method="POST">
-      <label>Username</label>
-      <input type="text" name="username" placeholder="Enter username" required>
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Enter password" required>
 
-      <label>Password</label>
-      <input type="password" name="password" placeholder="Enter password" required>
-
-      <button type="submit" class="green-btn">Login</button>
-    </form>
-
-    <div class="login-hint">
-      <strong>Demo Account</strong><br>
-      Username: admin<br>
-      Password: admin123
+        <button type="submit" class="login-btn">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </button>
+      </form>
     </div>
   </div>
-</div>
 
 </body>
 </html>

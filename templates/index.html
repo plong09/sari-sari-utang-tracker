@@ -5,6 +5,7 @@
   <title>Sari-Sari Utang Tracker</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 </head>
 <body>
 
@@ -103,8 +104,10 @@
               <p>Total Unpaid Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
             </div>
 
-            <div class="actions">
-              <a href="/print/{{ selected_customer[0] }}" class="blue-btn">🖨 Print</a>
+          <div class="actions">
+              <a href="/print/{{ selected_customer[0] }}" class="print-btn">
+                <i class="fas fa-print"></i> Print
+              </a>
             </div>
           </div>
 
@@ -135,19 +138,31 @@
                         {{ u[6] }}
                       </span>
                     </td>
-                    <td>
-                      {% if u[6] == 'UNPAID' %}
-                        <a href="/mark-paid/{{ u[0] }}/{{ selected_customer[0] }}"
-                           onclick="return confirm('Mark this item as paid?')">✅</a>
-                      {% else %}
-                        <span class="paid-text">Paid</span>
-                      {% endif %}
+                    
 
-                      <a href="/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}">✏️</a>
 
-                      <a href="/delete-utang/{{ u[0] }}/{{ selected_customer[0] }}"
-                         onclick="return confirm('Delete this utang record?')">🗑️</a>
-                    </td>
+                  <td>
+                    {% if u[6] == 'UNPAID' %}
+                      <!-- Mark as Paid Button with Icon -->
+                      <button class="action-btn paid-btn" onclick="openModal({{ u[0] }}, {{ selected_customer[0] }})">
+                        <i class="fas fa-check-circle"></i> Mark as Paid
+                      </button>
+                    {% else %}
+                      <span class="paid-text">Paid</span>
+                    {% endif %}
+                    
+                    <!-- Edit Button with Icon -->
+                    <button class="action-btn edit-btn" onclick="window.location.href='/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}'">
+                      <i class="fas fa-edit"></i> Edit
+                    </button>
+
+                    <!-- Delete Button with Icon -->
+                    <button class="action-btn delete-btn" onclick="openModal({{ u[0] }}, {{ selected_customer[0] }})">
+                      <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                  </td>
+
+
                   </tr>
                 {% endfor %}
               {% else %}
@@ -352,7 +367,44 @@
   </main>
 </div>
 
+<!-- Modal for Delete Confirmation -->
+<div id="deleteModal" class="modal">
+  <div class="modal-content">
+    <h2>Are you sure?</h2>
+    <p>Do you really want to delete this utang record?</p>
+    <div class="modal-buttons">
+      <button id="confirmDelete" class="green-btn">Yes</button>
+      <button id="cancelDelete" class="red-btn">No</button>
+    </div>
+  </div>
+</div>
+
 <script>
+
+  const modal = document.getElementById("deleteModal");
+const confirmDeleteBtn = document.getElementById("confirmDelete");
+const cancelDeleteBtn = document.getElementById("cancelDelete");
+
+function openModal(utId, custId) {
+  modal.style.display = "block";  // Show the modal
+  confirmDeleteBtn.onclick = function() {
+    window.location.href = `/delete-utang/${utId}/${custId}`;  // Perform delete action
+    modal.style.display = "none";  // Close the modal when confirmed
+  };
+  cancelDeleteBtn.onclick = function() {
+    modal.style.display = "none";  // Close the modal when cancelled
+  };
+}
+
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";  // Close modal if clicked outside
+  }
+};
+
+
+
+
   const itemSelect = document.getElementById("itemSelect");
   const quantityInput = document.getElementById("quantityInput");
   const priceInput = document.getElementById("priceInput");

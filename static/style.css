@@ -372,10 +372,9 @@ th {
   }
 }
 
-/* Login Page */
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f2235, #07111f);
+  background: linear-gradient(135deg, #0f2235, #07111f); /* Dark gradient background */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -388,14 +387,14 @@ th {
   background: #ffffff;
   padding: 32px;
   border-radius: 18px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25); /* Soft shadow */
 }
 
 .login-logo {
   width: 64px;
   height: 64px;
   border-radius: 18px;
-  background: #eaf8ed;
+  background: #eaf8ed; /* Light green background */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -418,29 +417,48 @@ th {
   gap: 10px;
 }
 
+/* Label styling */
 .login-card label {
   font-weight: bold;
   color: #172033;
   margin-top: 8px;
 }
 
+/* Input Fields Styling */
 .login-card input {
   width: 100%;
   padding: 13px 14px;
   border: 1px solid #d6dde8;
   border-radius: 10px;
   outline: none;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
 }
 
 .login-card input:focus {
-  border-color: #35a84d;
-  box-shadow: 0 0 0 3px rgba(53, 168, 77, 0.15);
+  border-color: #35a84d; /* Green border */
+  box-shadow: 0 0 0 3px rgba(53, 168, 77, 0.15); /* Soft green glow */
 }
 
+/* Login Button Styling */
 .login-card button {
-  margin-top: 12px;
+  width: 100%;
+  padding: 14px;
+  background-color: #35a84d; /* Green background */
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
+.login-card button:hover {
+  background-color: #2b8e37; /* Darker green on hover */
+}
+
+/* Error Message Styling */
 .login-error {
   background: #fee2e2;
   color: #dc2626;
@@ -448,8 +466,10 @@ th {
   border-radius: 10px;
   margin-bottom: 14px;
   font-weight: bold;
+  text-align: center;
 }
 
+/* Hint Styling */
 .login-hint {
   margin-top: 20px;
   padding: 14px;
@@ -457,8 +477,10 @@ th {
   border-radius: 12px;
   color: #475569;
   font-size: 14px;
+  text-align: center;
 }
 
+/* Logout Button Styling */
 .logout-btn {
   margin-left: 12px;
   color: #dc2626;
@@ -468,4 +490,171 @@ th {
 
 .logout-btn:hover {
   text-decoration: underline;
+}
+
+/* Responsive Design for Mobile */
+@media (max-width: 600px) {
+  .login-card {
+    padding: 20px;
+    width: 90%;
+  }
+
+  .login-logo {
+    font-size: 28px;
+  }
+
+  .login-card h1 {
+    font-size: 24px;
+  }
+}
+
+/* Action Button Styles */
+.action-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+  margin: 5px;
+}
+
+.paid-btn {
+  background-color: #34d399;
+  color: white;
+  border: 1px solid #34d399;
+}
+
+.paid-btn:hover {
+  background-color: #2dca7f;
+  border-color: #2dca7f;
+}
+
+.edit-btn {
+  background-color: #34d399;
+  color: white;
+  border: 1px solid #34d399;
+}
+
+.edit-btn:hover {
+  background-color: #2dca7f;
+  border-color: #2dca7f;
+}
+
+.delete-btn {
+  background-color: #ef4444;
+  color: white;
+  border: 1px solid #ef4444;
+}
+
+.delete-btn:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Print Button Styles */
+.print-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  background-color: #3b82f6;
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.print-btn:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+/* Modal Styles */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Black with transparency */
+  overflow: auto; /* Enable scroll if needed */
+}
+
+.modal-content {
+  background-color: #fff;
+  margin: 15% auto;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%; /* You can change the width */
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
+}
+
+.modal h2 {
+  color: #dc2626;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.modal button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 0 10px;
+}
+
+.green-btn {
+  background-color: #34d399;
+  color: white;
+  border: 1px solid #34d399;
+}
+
+.green-btn:hover {
+  background-color: #2dca7f;
+  border-color: #2dca7f;
+}
+
+.red-btn {
+  background-color: #ef4444;
+  color: white;
+  border: 1px solid #ef4444;
+}
+
+.red-btn:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Print Button Styling */
+.print-btn {
+  background-color: #35a84d; /* Green color */
+  color: white;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-size: 16px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: background-color 0.3s ease;
+}
+
+.print-btn i {
+  margin-right: 8px; /* Space between icon and text */
+}
+
+.print-btn:hover {
+  background-color: #2b8e37; /* Darker green when hovering */
 }

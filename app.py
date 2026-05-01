@@ -6,6 +6,16 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = "change-this-secret-key"
 
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Access environment variables
+USER_NAME = os.getenv('USER_NAME')
+PASSWORD = os.getenv('PASSWORD')
+
 
 # ---------------- LOGIN PROTECTION ---------------- #
 
@@ -26,7 +36,7 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        if username == "admin" and password == "admin123":
+        if username == USER_NAME and password == PASSWORD:
             session["logged_in"] = True
             return redirect("/")
         else:
