@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login | Sari-Sari Utang Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">🛒</div>
+
+    <h1>Sari-Sari Store</h1>
+    <p>Login to manage your utang tracker</p>
+
+    {% if error %}
+      <div class="login-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <label>Username</label>
+      <input type="text" name="username" placeholder="Enter username" required>
+
+      <label>Password</label>
+      <input type="password" name="password" placeholder="Enter password" required>
+
+      <button type="submit" class="green-btn">Login</button>
+    </form>
+
+    <div class="login-hint">
+      <strong>Demo Account</strong><br>
+      Username: admin<br>
+      Password: admin123
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

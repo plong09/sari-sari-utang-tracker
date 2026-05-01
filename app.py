@@ -1,11 +1,51 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session
 import sqlite3
 from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__)
+app.secret_key = "change-this-secret-key"
+
+
+# ---------------- LOGIN PROTECTION ---------------- #
+
+def login_required(route_function):
+    @wraps(route_function)
+    def wrapper(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect("/login")
+        return route_function(*args, **kwargs)
+    return wrapper
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if username == "admin" and password == "admin123":
+            session["logged_in"] = True
+            return redirect("/")
+        else:
+            error = "Invalid username or password"
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+
+# ---------------- DATABASE ---------------- #
 
 def get_db():
     return sqlite3.connect("database.db")
+
 
 def init_db():
     conn = get_db()
@@ -59,11 +99,17 @@ def init_db():
     conn.commit()
     conn.close()
 
+
+# ---------------- HELPERS ---------------- #
+
 def get_customers(cursor):
     cursor.execute("""
         SELECT customers.id, customers.name,
         COALESCE(SUM(
-            CASE WHEN utang.status='UNPAID' THEN utang.total ELSE 0 END
+            CASE
+                WHEN utang.status = 'UNPAID' THEN utang.total
+                ELSE 0
+            END
         ), 0)
         FROM customers
         LEFT JOIN utang ON customers.id = utang.customer_id
@@ -71,6 +117,7 @@ def get_customers(cursor):
         ORDER BY customers.id DESC
     """)
     return cursor.fetchall()
+
 
 def get_common_data(page="dashboard", selected_customer=None, utang_list=None, selected_total=0):
     conn = get_db()
@@ -146,31 +193,47 @@ def get_common_data(page="dashboard", selected_customer=None, utang_list=None, s
         "all_records": all_records
     }
 
+
+# ---------------- PAGES ---------------- #
+
 @app.route("/")
+@login_required
 def dashboard():
     return render_template("index.html", **get_common_data("dashboard"))
 
+
 @app.route("/customers")
+@login_required
 def customers_page():
     return render_template("index.html", **get_common_data("customers"))
 
+
 @app.route("/products")
+@login_required
 def products_page():
     return render_template("index.html", **get_common_data("products"))
 
+
 @app.route("/records")
+@login_required
 def records_page():
     return render_template("index.html", **get_common_data("records"))
 
+
 @app.route("/reports")
+@login_required
 def reports_page():
     return render_template("index.html", **get_common_data("reports"))
 
+
 @app.route("/settings")
+@login_required
 def settings_page():
     return render_template("index.html", **get_common_data("settings"))
 
+
 @app.route("/customer/<int:id>")
+@login_required
 def customer(id):
     conn = get_db()
     cursor = conn.cursor()
@@ -195,7 +258,11 @@ def customer(id):
         **get_common_data("dashboard", selected_customer, utang_list, selected_total)
     )
 
+
+# ---------------- ACTIONS ---------------- #
+
 @app.route("/add-customer", methods=["POST"])
+@login_required
 def add_customer():
     name = request.form["name"]
 
@@ -207,7 +274,9 @@ def add_customer():
 
     return redirect("/customers")
 
+
 @app.route("/add-product", methods=["POST"])
+@login_required
 def add_product():
     name = request.form["name"]
     price = float(request.form["price"])
@@ -220,7 +289,9 @@ def add_product():
 
     return redirect("/products")
 
+
 @app.route("/delete-product/<int:id>")
+@login_required
 def delete_product(id):
     conn = get_db()
     cursor = conn.cursor()
@@ -230,7 +301,9 @@ def delete_product(id):
 
     return redirect("/products")
 
+
 @app.route("/add-utang", methods=["POST"])
+@login_required
 def add_utang():
     cid = request.form["customer_id"]
     item = request.form["item_name"]
@@ -252,7 +325,9 @@ def add_utang():
 
     return redirect(f"/customer/{cid}")
 
+
 @app.route("/delete-utang/<int:id>/<int:cid>")
+@login_required
 def delete_utang(id, cid):
     conn = get_db()
     cursor = conn.cursor()
@@ -262,7 +337,9 @@ def delete_utang(id, cid):
 
     return redirect(f"/customer/{cid}")
 
+
 @app.route("/mark-paid/<int:utang_id>/<int:customer_id>")
+@login_required
 def mark_paid(utang_id, customer_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -272,7 +349,9 @@ def mark_paid(utang_id, customer_id):
 
     return redirect(f"/customer/{customer_id}")
 
+
 @app.route("/edit-utang/<int:utang_id>/<int:customer_id>", methods=["GET", "POST"])
+@login_required
 def edit_utang(utang_id, customer_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -309,7 +388,9 @@ def edit_utang(utang_id, customer_id):
         customer_id=customer_id
     )
 
+
 @app.route("/print/<int:customer_id>")
+@login_required
 def print_receipt(customer_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -338,6 +419,7 @@ def print_receipt(customer_id):
         utang_list=utang_list,
         total=total
     )
+
 
 if __name__ == "__main__":
     init_db()
