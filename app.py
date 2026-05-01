@@ -430,7 +430,6 @@ def print_receipt(customer_id):
         total=total
     )
 
-
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
