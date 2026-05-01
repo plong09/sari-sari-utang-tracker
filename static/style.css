@@ -140,12 +140,19 @@ body {
 
 /* Inputs */
 input,
-select {
+select,
+textarea {
   width: 100%;
   padding: 13px;
   border: 1px solid #d6dde8;
   border-radius: 9px;
   margin: 10px 0;
+  font: inherit;
+}
+
+textarea {
+  min-height: 46px;
+  resize: vertical;
 }
 
 /* Buttons */
@@ -229,6 +236,11 @@ th {
   color: #16a34a;
 }
 
+.partial {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 /* Total row */
 .total-row {
   background: #fff7e6;
@@ -241,7 +253,7 @@ th {
 /* Form grid */
 .form-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  grid-template-columns: 2fr 0.7fr 1fr 1fr auto;
   gap: 12px;
 }
 
@@ -296,6 +308,21 @@ th {
   border-radius: 10px;
 }
 
+/* Mobile Menu Button */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+}
+
+/* Sidebar Overlay - hidden by default on desktop */
+.sidebar-overlay {
+  display: none;
+}
+
 /* Responsive */
 @media (max-width: 1000px) {
   .app {
@@ -303,7 +330,37 @@ th {
   }
 
   .sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+
+  .sidebar-overlay {
     display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+
+  .mobile-menu-btn {
+    display: block;
   }
 
   .cards {
@@ -312,6 +369,64 @@ th {
 
   .product-list {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-form {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .details-head,
+  .products-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .main {
+    padding: 0 16px 16px;
+  }
+
+  .stat {
+    padding: 16px;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .product-list {
+    grid-template-columns: 1fr;
+  }
+
+  .form-card {
+    padding: 16px;
+  }
+
+  .customer-panel {
+    padding: 16px;
   }
 }
 
@@ -657,4 +772,251 @@ th {
 
 .print-btn:hover {
   background-color: #2b8e37; /* Darker green when hovering */
+}
+
+/* Feature additions */
+.panel-head,
+.customer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.panel-head {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.icon-link {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #1684db;
+  background: #eef6ff;
+  border: 1px solid #bfdbfe;
+  text-decoration: none;
+}
+
+.link-btn,
+.green-btn,
+.blue-btn,
+.red-btn,
+.print-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.customer small {
+  display: block;
+  color: #64748b;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
+.customer-profile,
+.customer-form,
+.filter-bar {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 22px;
+}
+
+.customer-profile {
+  grid-template-columns: 1.1fr 1fr 1.2fr 1.4fr auto;
+  align-items: start;
+}
+
+.customer-form {
+  grid-template-columns: 1fr 1fr 1fr 1.3fr auto;
+  align-items: start;
+}
+
+.filter-bar {
+  grid-template-columns: 1.5fr 150px 180px auto auto;
+  align-items: center;
+}
+
+.inline-form {
+  margin: 0;
+}
+
+.row-actions .inline-form {
+  display: inline-flex;
+}
+
+.history-panel {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+}
+
+.record-table th,
+.record-table td {
+  vertical-align: top;
+}
+
+.record-table td b {
+  color: #172033;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.row-actions .action-btn {
+  margin: 0;
+}
+
+.compact-table th,
+.compact-table td {
+  padding: 10px;
+}
+
+.payment-form {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.payment-form small {
+  color: #64748b;
+}
+
+.edit-summary {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+.back-link {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: #1684db;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.modal {
+  z-index: 2000;
+}
+
+.modal-content h2 {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1200px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .customer-profile,
+  .customer-form,
+  .filter-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-profile,
+  .customer-form,
+  .filter-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .record-table {
+    display: block;
+    border-collapse: separate;
+  }
+
+  .record-table thead {
+    display: none;
+  }
+
+  .record-table tbody,
+  .record-table tr,
+  .record-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .record-table tr {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  }
+
+  .record-table td {
+    border-bottom: none;
+    padding: 8px 4px;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+
+  .record-table td::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-weight: bold;
+  }
+
+  .record-table td[colspan] {
+    display: block;
+  }
+
+  .record-table td[colspan]::before {
+    content: "";
+  }
+
+  .row-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .row-actions .inline-form {
+    width: 100%;
+  }
+
+  .row-actions .action-btn {
+    width: 100%;
+  }
+
+  .details,
+  .products,
+  .history-panel {
+    padding: 16px;
+  }
+
+  .actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .actions a {
+    flex: 1;
+  }
+
+  .modal-content {
+    margin: 20% auto;
+    width: 92%;
+  }
 }

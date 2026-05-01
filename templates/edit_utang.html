@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Edit Utang</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -9,7 +10,7 @@
 
 <div class="edit-page">
   <div class="edit-card">
-    <a href="/customer/{{ customer_id }}" class="back-link">← Back</a>
+    <a href="/customer/{{ customer_id }}" class="back-link">Back</a>
 
     <h1>Edit Utang</h1>
     <p>Update item, quantity, or price.</p>
@@ -33,7 +34,12 @@
       <input type="text" name="price" id="editPrice" value="{{ utang[4] }}" required>
 
       <label>Total</label>
-      <input type="text" id="editTotal" value="{{ utang[5] }}" readonly>
+      <input type="text" id="editTotal" value="{{ "%.2f"|format(utang[5]) }}" readonly>
+
+      <div class="edit-summary">
+        <p>Already paid: <b>&#8369;{{ "%.2f"|format(utang[8]) }}</b></p>
+        <p>Status: <b>{{ utang[6] }}</b></p>
+      </div>
 
       <button class="green-btn" type="submit">Save Changes</button>
     </form>

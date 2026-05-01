@@ -1,20 +1,23 @@
-from flask import Flask, render_template, request, redirect, session
-import sqlite3
+from flask import Flask, render_template, request, redirect, session, Response
+import csv
 from datetime import datetime
 from functools import wraps
+from io import StringIO
+import os
+import sqlite3
+
+from dotenv import load_dotenv
+
 
 app = Flask(__name__)
 app.secret_key = "change-this-secret-key"
 
-from dotenv import load_dotenv
-import os
-
-# Load environment variables from .env file
 load_dotenv()
 
-# Access environment variables
-USER_NAME = os.getenv('USER_NAME')
-PASSWORD = os.getenv('PASSWORD')
+USER_NAME = os.getenv("USER_NAME")
+PASSWORD = os.getenv("PASSWORD")
+
+BALANCE_SQL = "(utang.total - COALESCE(utang.amount_paid, 0))"
 
 
 # ---------------- LOGIN PROTECTION ---------------- #
@@ -39,8 +42,7 @@ def login():
         if username == USER_NAME and password == PASSWORD:
             session["logged_in"] = True
             return redirect("/")
-        else:
-            error = "Invalid username or password"
+        error = "Invalid username or password"
 
     return render_template("login.html", error=error)
 
@@ -55,6 +57,50 @@ def logout():
 
 def get_db():
     return sqlite3.connect("database.db")
+
+
+def get_columns(cursor, table):
+    cursor.execute(f"PRAGMA table_info({table})")
+    return [column[1] for column in cursor.fetchall()]
+
+
+def add_column_if_missing(cursor, table, column, ddl):
+    if column not in get_columns(cursor, table):
+        cursor.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+
+
+def sync_utang_status(cursor, utang_id=None):
+    params = ()
+    where = ""
+    if utang_id is not None:
+        where = "WHERE id=?"
+        params = (utang_id,)
+
+    cursor.execute(
+        f"""
+        UPDATE utang
+        SET amount_paid = CASE
+            WHEN COALESCE(amount_paid, 0) < 0 THEN 0
+            WHEN COALESCE(amount_paid, 0) > total THEN total
+            ELSE COALESCE(amount_paid, 0)
+        END
+        {where}
+        """,
+        params
+    )
+
+    cursor.execute(
+        f"""
+        UPDATE utang
+        SET status = CASE
+            WHEN COALESCE(amount_paid, 0) >= total THEN 'PAID'
+            WHEN COALESCE(amount_paid, 0) > 0 THEN 'PARTIAL'
+            ELSE 'UNPAID'
+        END
+        {where}
+        """,
+        params
+    )
 
 
 def init_db():
@@ -88,10 +134,32 @@ def init_db():
     )
     """)
 
-    cursor.execute("PRAGMA table_info(utang)")
-    columns = [column[1] for column in cursor.fetchall()]
-    if "date_created" not in columns:
-        cursor.execute("ALTER TABLE utang ADD COLUMN date_created TEXT")
+    add_column_if_missing(cursor, "customers", "phone", "phone TEXT DEFAULT ''")
+    add_column_if_missing(cursor, "customers", "address", "address TEXT DEFAULT ''")
+    add_column_if_missing(cursor, "customers", "notes", "notes TEXT DEFAULT ''")
+    add_column_if_missing(cursor, "utang", "date_created", "date_created TEXT")
+    add_column_if_missing(cursor, "utang", "amount_paid", "amount_paid REAL DEFAULT 0")
+    add_column_if_missing(cursor, "utang", "due_date", "due_date TEXT DEFAULT ''")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER,
+        utang_id INTEGER,
+        amount REAL,
+        payment_date TEXT,
+        note TEXT DEFAULT '',
+        FOREIGN KEY(customer_id) REFERENCES customers(id),
+        FOREIGN KEY(utang_id) REFERENCES utang(id)
+    )
+    """)
+
+    cursor.execute("""
+        UPDATE utang
+        SET amount_paid = total
+        WHERE status='PAID' AND COALESCE(amount_paid, 0)=0
+    """)
+    sync_utang_status(cursor)
 
     cursor.execute("SELECT COUNT(*) FROM products")
     if cursor.fetchone()[0] == 0:
@@ -112,24 +180,151 @@ def init_db():
 
 # ---------------- HELPERS ---------------- #
 
+def money(value):
+    try:
+        return round(float(value or 0), 2)
+    except (TypeError, ValueError):
+        return 0
+
+
+def display_datetime():
+    return datetime.now().strftime("%b %d, %Y %I:%M %p")
+
+
+def display_date():
+    return datetime.now().strftime("%b %d, %Y")
+
+
+def iso_date():
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def record_payment(cursor, utang_id, customer_id, amount, note=""):
+    amount = money(amount)
+    if amount <= 0:
+        return 0
+
+    cursor.execute(
+        """
+        SELECT total, COALESCE(amount_paid, 0)
+        FROM utang
+        WHERE id=? AND customer_id=?
+        """,
+        (utang_id, customer_id)
+    )
+    row = cursor.fetchone()
+    if not row:
+        return 0
+
+    total, paid = row
+    remaining = money(total - paid)
+    if remaining <= 0:
+        sync_utang_status(cursor, utang_id)
+        return 0
+
+    applied_amount = min(amount, remaining)
+    cursor.execute(
+        """
+        INSERT INTO payments (customer_id, utang_id, amount, payment_date, note)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (customer_id, utang_id, applied_amount, display_datetime(), note)
+    )
+    cursor.execute(
+        """
+        UPDATE utang
+        SET amount_paid = COALESCE(amount_paid, 0) + ?
+        WHERE id=? AND customer_id=?
+        """,
+        (applied_amount, utang_id, customer_id)
+    )
+    sync_utang_status(cursor, utang_id)
+    return applied_amount
+
+
 def get_customers(cursor):
-    cursor.execute("""
-        SELECT customers.id, customers.name,
-        COALESCE(SUM(
-            CASE
-                WHEN utang.status = 'UNPAID' THEN utang.total
-                ELSE 0
-            END
-        ), 0)
+    cursor.execute(f"""
+        SELECT customers.id,
+               customers.name,
+               COALESCE(SUM(
+                   CASE
+                       WHEN {BALANCE_SQL} > 0 THEN {BALANCE_SQL}
+                       ELSE 0
+                   END
+               ), 0) AS balance,
+               COALESCE(customers.phone, ''),
+               COALESCE(customers.address, ''),
+               COALESCE(customers.notes, '')
         FROM customers
         LEFT JOIN utang ON customers.id = utang.customer_id
-        GROUP BY customers.id, customers.name
+        GROUP BY customers.id, customers.name, customers.phone,
+                 customers.address, customers.notes
         ORDER BY customers.id DESC
     """)
     return cursor.fetchall()
 
 
-def get_common_data(page="dashboard", selected_customer=None, utang_list=None, selected_total=0):
+def collect_record_filters():
+    return {
+        "status": request.args.get("status", ""),
+        "customer_id": request.args.get("customer_id", ""),
+        "search": request.args.get("search", "").strip()
+    }
+
+
+def get_all_records(cursor, filters=None):
+    filters = filters or {}
+    where = []
+    params = []
+
+    status = filters.get("status") or ""
+    if status in {"UNPAID", "PARTIAL", "PAID"}:
+        where.append("utang.status=?")
+        params.append(status)
+    elif status == "OPEN":
+        where.append(f"{BALANCE_SQL} > 0")
+
+    customer_id = filters.get("customer_id") or ""
+    if customer_id:
+        where.append("customers.id=?")
+        params.append(customer_id)
+
+    search = filters.get("search") or ""
+    if search:
+        where.append("(customers.name LIKE ? OR utang.item_name LIKE ?)")
+        params.extend([f"%{search}%", f"%{search}%"])
+
+    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+    cursor.execute(
+        f"""
+        SELECT utang.id,
+               customers.name,
+               utang.item_name,
+               utang.quantity,
+               utang.price,
+               utang.total,
+               utang.status,
+               utang.date_created,
+               COALESCE(utang.amount_paid, 0),
+               {BALANCE_SQL} AS balance
+        FROM utang
+        JOIN customers ON utang.customer_id = customers.id
+        {where_sql}
+        ORDER BY utang.id DESC
+        """,
+        params
+    )
+    return cursor.fetchall()
+
+
+def get_common_data(
+    page="dashboard",
+    selected_customer=None,
+    utang_list=None,
+    selected_total=0,
+    payment_history=None,
+    record_filters=None
+):
     conn = get_db()
     cursor = conn.cursor()
 
@@ -138,52 +333,68 @@ def get_common_data(page="dashboard", selected_customer=None, utang_list=None, s
     cursor.execute("SELECT * FROM products ORDER BY name")
     products = cursor.fetchall()
 
-    cursor.execute("SELECT COALESCE(SUM(total),0) FROM utang WHERE status='UNPAID'")
+    cursor.execute(f"""
+        SELECT COALESCE(SUM(
+            CASE WHEN {BALANCE_SQL} > 0 THEN {BALANCE_SQL} ELSE 0 END
+        ), 0)
+        FROM utang
+    """)
     total_utang = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COALESCE(SUM(total),0) FROM utang WHERE status='PAID'")
+    cursor.execute("SELECT COALESCE(SUM(COALESCE(amount_paid, 0)), 0) FROM utang")
     total_paid = cursor.fetchone()[0]
 
-    today = datetime.now().strftime("%b %d, %Y")
     cursor.execute(
         "SELECT COALESCE(SUM(total),0) FROM utang WHERE date_created LIKE ?",
-        (today + "%",)
+        (display_date() + "%",)
     )
     today_utang = cursor.fetchone()[0]
 
-    cursor.execute("""
-        SELECT customers.name, COALESCE(SUM(utang.total),0) AS balance
+    cursor.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_date LIKE ?",
+        (display_date() + "%",)
+    )
+    today_payments = cursor.fetchone()[0]
+
+    cursor.execute(f"""
+        SELECT customers.name, COALESCE(SUM({BALANCE_SQL}),0) AS balance
         FROM customers
         JOIN utang ON customers.id = utang.customer_id
-        WHERE utang.status='UNPAID'
+        WHERE {BALANCE_SQL} > 0
         GROUP BY customers.id, customers.name
         ORDER BY balance DESC
         LIMIT 1
     """)
     top_customer = cursor.fetchone()
 
-    cursor.execute("""
-        SELECT customers.name, COALESCE(SUM(utang.total),0) AS balance
+    cursor.execute(f"""
+        SELECT customers.name, COALESCE(SUM({BALANCE_SQL}),0) AS balance
         FROM customers
         JOIN utang ON customers.id = utang.customer_id
-        WHERE utang.status='UNPAID'
+        WHERE {BALANCE_SQL} > 0
         GROUP BY customers.id, customers.name
         ORDER BY balance DESC
         LIMIT 5
     """)
     customer_chart = cursor.fetchall()
 
-    customer_chart_names = [row[0] for row in customer_chart]
-    customer_chart_totals = [row[1] for row in customer_chart]
-
     cursor.execute("""
-        SELECT utang.id, customers.name, utang.item_name, utang.quantity,
-               utang.price, utang.total, utang.status, utang.date_created
-        FROM utang
-        JOIN customers ON utang.customer_id = customers.id
-        ORDER BY utang.id DESC
+        SELECT payments.id,
+               customers.name,
+               utang.item_name,
+               payments.amount,
+               payments.payment_date,
+               COALESCE(payments.note, '')
+        FROM payments
+        JOIN customers ON payments.customer_id = customers.id
+        LEFT JOIN utang ON payments.utang_id = utang.id
+        ORDER BY payments.id DESC
+        LIMIT 8
     """)
-    all_records = cursor.fetchall()
+    recent_payments = cursor.fetchall()
+
+    filters = record_filters or {}
+    all_records = get_all_records(cursor, filters)
 
     conn.close()
 
@@ -194,14 +405,31 @@ def get_common_data(page="dashboard", selected_customer=None, utang_list=None, s
         "total_utang": total_utang,
         "total_paid": total_paid,
         "today_utang": today_utang,
+        "today_payments": today_payments,
         "top_customer": top_customer,
-        "customer_chart_names": customer_chart_names,
-        "customer_chart_totals": customer_chart_totals,
+        "customer_chart_names": [row[0] for row in customer_chart],
+        "customer_chart_totals": [row[1] for row in customer_chart],
         "selected_customer": selected_customer,
         "utang_list": utang_list or [],
         "selected_total": selected_total,
-        "all_records": all_records
+        "payment_history": payment_history or [],
+        "recent_payments": recent_payments,
+        "all_records": all_records,
+        "record_filters": filters
     }
+
+
+def csv_response(filename, headers, rows):
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    content = "\ufeff" + output.getvalue()
+    return Response(
+        content,
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 # ---------------- PAGES ---------------- #
@@ -227,7 +455,10 @@ def products_page():
 @app.route("/records")
 @login_required
 def records_page():
-    return render_template("index.html", **get_common_data("records"))
+    return render_template(
+        "index.html",
+        **get_common_data("records", record_filters=collect_record_filters())
+    )
 
 
 @app.route("/reports")
@@ -248,24 +479,70 @@ def customer(id):
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM customers WHERE id=?", (id,))
+    cursor.execute("""
+        SELECT id,
+               name,
+               COALESCE(phone, ''),
+               COALESCE(address, ''),
+               COALESCE(notes, '')
+        FROM customers
+        WHERE id=?
+    """, (id,))
     selected_customer = cursor.fetchone()
 
-    cursor.execute("SELECT * FROM utang WHERE customer_id=? ORDER BY id DESC", (id,))
+    if not selected_customer:
+        conn.close()
+        return redirect("/")
+
+    cursor.execute(f"""
+        SELECT id,
+               customer_id,
+               item_name,
+               quantity,
+               price,
+               total,
+               status,
+               date_created,
+               COALESCE(amount_paid, 0),
+               {BALANCE_SQL} AS balance
+        FROM utang
+        WHERE customer_id=? AND {BALANCE_SQL} > 0
+        ORDER BY id DESC
+    """, (id,))
     utang_list = cursor.fetchall()
 
-    cursor.execute("""
-        SELECT COALESCE(SUM(total),0)
+    cursor.execute(f"""
+        SELECT COALESCE(SUM({BALANCE_SQL}),0)
         FROM utang
-        WHERE customer_id=? AND status='UNPAID'
+        WHERE customer_id=? AND {BALANCE_SQL} > 0
     """, (id,))
     selected_total = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT payments.id,
+               utang.item_name,
+               payments.amount,
+               payments.payment_date,
+               COALESCE(payments.note, '')
+        FROM payments
+        LEFT JOIN utang ON payments.utang_id = utang.id
+        WHERE payments.customer_id=?
+        ORDER BY payments.id DESC
+        LIMIT 20
+    """, (id,))
+    payment_history = cursor.fetchall()
 
     conn.close()
 
     return render_template(
         "index.html",
-        **get_common_data("dashboard", selected_customer, utang_list, selected_total)
+        **get_common_data(
+            "dashboard",
+            selected_customer,
+            utang_list,
+            selected_total,
+            payment_history
+        )
     )
 
 
@@ -274,15 +551,45 @@ def customer(id):
 @app.route("/add-customer", methods=["POST"])
 @login_required
 def add_customer():
-    name = request.form["name"]
+    name = request.form["name"].strip()
+    phone = request.form.get("phone", "").strip()
+    address = request.form.get("address", "").strip()
+    notes = request.form.get("notes", "").strip()
 
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO customers (name) VALUES (?)", (name,))
+    cursor.execute(
+        "INSERT INTO customers (name, phone, address, notes) VALUES (?, ?, ?, ?)",
+        (name, phone, address, notes)
+    )
     conn.commit()
     conn.close()
 
     return redirect("/customers")
+
+
+@app.route("/update-customer/<int:id>", methods=["POST"])
+@login_required
+def update_customer(id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE customers
+        SET name=?, phone=?, address=?, notes=?
+        WHERE id=?
+        """,
+        (
+            request.form["name"].strip(),
+            request.form.get("phone", "").strip(),
+            request.form.get("address", "").strip(),
+            request.form.get("notes", "").strip(),
+            id
+        )
+    )
+    conn.commit()
+    conn.close()
+    return redirect(f"/customer/{id}")
 
 
 @app.route("/add-product", methods=["POST"])
@@ -320,20 +627,39 @@ def add_utang():
     qty = int(request.form["quantity"])
     price = float(request.form["price"])
     total = float(request.form["total"])
-    date_created = datetime.now().strftime("%b %d, %Y %I:%M %p")
 
     conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
-    INSERT INTO utang (customer_id, item_name, quantity, price, total, date_created)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, (cid, item, qty, price, total, date_created))
+    INSERT INTO utang (
+        customer_id, item_name, quantity, price, total,
+        status, date_created, amount_paid
+    )
+    VALUES (?, ?, ?, ?, ?, 'UNPAID', ?, 0)
+    """, (cid, item, qty, price, total, display_datetime()))
 
     conn.commit()
     conn.close()
 
     return redirect(f"/customer/{cid}")
+
+
+@app.route("/add-payment", methods=["POST"])
+@login_required
+def add_payment():
+    utang_id = int(request.form["utang_id"])
+    customer_id = int(request.form["customer_id"])
+    amount = request.form.get("amount", 0)
+    note = request.form.get("note", "").strip()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    record_payment(cursor, utang_id, customer_id, amount, note)
+    conn.commit()
+    conn.close()
+
+    return redirect(f"/customer/{customer_id}")
 
 
 @app.route("/delete-utang/<int:id>/<int:cid>")
@@ -341,6 +667,7 @@ def add_utang():
 def delete_utang(id, cid):
     conn = get_db()
     cursor = conn.cursor()
+    cursor.execute("DELETE FROM payments WHERE utang_id=?", (id,))
     cursor.execute("DELETE FROM utang WHERE id=?", (id,))
     conn.commit()
     conn.close()
@@ -348,12 +675,44 @@ def delete_utang(id, cid):
     return redirect(f"/customer/{cid}")
 
 
-@app.route("/mark-paid/<int:utang_id>/<int:customer_id>")
+@app.route("/mark-paid/<int:utang_id>/<int:customer_id>", methods=["GET", "POST"])
 @login_required
 def mark_paid(utang_id, customer_id):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("UPDATE utang SET status='PAID' WHERE id=?", (utang_id,))
+    cursor.execute(
+        f"""
+        SELECT {BALANCE_SQL}
+        FROM utang
+        WHERE id=? AND customer_id=?
+        """,
+        (utang_id, customer_id)
+    )
+    row = cursor.fetchone()
+    if row:
+        record_payment(cursor, utang_id, customer_id, row[0], "Marked fully paid")
+    conn.commit()
+    conn.close()
+
+    return redirect(f"/customer/{customer_id}")
+
+
+@app.route("/mark-all-paid/<int:customer_id>", methods=["POST"])
+@login_required
+def mark_all_paid(customer_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"""
+        SELECT id, {BALANCE_SQL}
+        FROM utang
+        WHERE customer_id=? AND {BALANCE_SQL} > 0
+        """,
+        (customer_id,)
+    )
+    for utang_id, balance in cursor.fetchall():
+        record_payment(cursor, utang_id, customer_id, balance, "Marked paid from full list")
+
     conn.commit()
     conn.close()
 
@@ -374,16 +733,33 @@ def edit_utang(utang_id, customer_id):
 
         cursor.execute("""
         UPDATE utang
-        SET item_name = ?, quantity = ?, price = ?, total = ?
+        SET item_name = ?,
+            quantity = ?,
+            price = ?,
+            total = ?,
+            amount_paid = MIN(COALESCE(amount_paid, 0), ?)
         WHERE id = ?
-        """, (item_name, quantity, price, total, utang_id))
+        """, (item_name, quantity, price, total, total, utang_id))
+        sync_utang_status(cursor, utang_id)
 
         conn.commit()
         conn.close()
 
         return redirect(f"/customer/{customer_id}")
 
-    cursor.execute("SELECT * FROM utang WHERE id=?", (utang_id,))
+    cursor.execute("""
+        SELECT id,
+               customer_id,
+               item_name,
+               quantity,
+               price,
+               total,
+               status,
+               date_created,
+               COALESCE(amount_paid, 0)
+        FROM utang
+        WHERE id=?
+    """, (utang_id,))
     utang = cursor.fetchone()
 
     cursor.execute("SELECT * FROM products ORDER BY name")
@@ -408,16 +784,27 @@ def print_receipt(customer_id):
     cursor.execute("SELECT * FROM customers WHERE id=?", (customer_id,))
     customer = cursor.fetchone()
 
-    cursor.execute("""
-        SELECT * FROM utang
-        WHERE customer_id=? AND status='UNPAID'
+    cursor.execute(f"""
+        SELECT id,
+               customer_id,
+               item_name,
+               quantity,
+               price,
+               total,
+               status,
+               date_created,
+               COALESCE(amount_paid, 0),
+               {BALANCE_SQL} AS balance
+        FROM utang
+        WHERE customer_id=? AND {BALANCE_SQL} > 0
+        ORDER BY id DESC
     """, (customer_id,))
     utang_list = cursor.fetchall()
 
-    cursor.execute("""
-        SELECT COALESCE(SUM(total),0)
+    cursor.execute(f"""
+        SELECT COALESCE(SUM({BALANCE_SQL}),0)
         FROM utang
-        WHERE customer_id=? AND status='UNPAID'
+        WHERE customer_id=? AND {BALANCE_SQL} > 0
     """, (customer_id,))
     total = cursor.fetchone()[0]
 
@@ -430,6 +817,61 @@ def print_receipt(customer_id):
         total=total
     )
 
+
+# ---------------- EXPORTS ---------------- #
+
+@app.route("/export/customers")
+@login_required
+def export_customers():
+    conn = get_db()
+    cursor = conn.cursor()
+    rows = get_customers(cursor)
+    conn.close()
+    return csv_response(
+        f"customers-{datetime.now().strftime('%Y%m%d')}.csv",
+        ["Customer ID", "Name", "Unpaid Balance", "Phone", "Address", "Notes"],
+        rows
+    )
+
+
+@app.route("/export/records")
+@login_required
+def export_records():
+    conn = get_db()
+    cursor = conn.cursor()
+    rows = get_all_records(cursor, collect_record_filters())
+    conn.close()
+    return csv_response(
+        f"utang-records-{datetime.now().strftime('%Y%m%d')}.csv",
+        [
+            "Record ID", "Customer", "Item", "Qty", "Price", "Total",
+            "Status", "Date Added", "Amount Paid", "Balance"
+        ],
+        rows
+    )
+
+
+@app.route("/export/customer/<int:customer_id>")
+@login_required
+def export_customer(customer_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM customers WHERE id=?", (customer_id,))
+    customer = cursor.fetchone()
+    rows = get_all_records(cursor, {"customer_id": str(customer_id)})
+    conn.close()
+
+    filename_name = customer[0].replace(" ", "-").lower() if customer else customer_id
+    return csv_response(
+        f"customer-{filename_name}-{datetime.now().strftime('%Y%m%d')}.csv",
+        [
+            "Record ID", "Customer", "Item", "Qty", "Price", "Total",
+            "Status", "Date Added", "Amount Paid", "Balance"
+        ],
+        rows
+    )
+
+
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

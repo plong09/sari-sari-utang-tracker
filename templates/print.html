@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receipt</title>
   <style>
     body {
@@ -10,7 +12,7 @@
     }
 
     .receipt {
-      max-width: 380px;
+      max-width: 460px;
       margin: auto;
       border: 1px solid #ddd;
       padding: 20px;
@@ -61,25 +63,30 @@
   <p class="center">Utang Receipt</p>
 
   <p><b>Customer:</b> {{ customer[1] }}</p>
+  {% if customer[2] %}
+    <p><b>Phone:</b> {{ customer[2] }}</p>
+  {% endif %}
 
   <table>
     <tr>
       <th>Item</th>
-      <th>Qty</th>
       <th>Total</th>
+      <th>Paid</th>
+      <th>Balance</th>
     </tr>
 
     {% for u in utang_list %}
     <tr>
       <td>{{ u[2] }}</td>
-      <td>{{ u[3] }}</td>
-      <td>₱{{ "%.2f"|format(u[5]) }}</td>
+      <td>&#8369;{{ "%.2f"|format(u[5]) }}</td>
+      <td>&#8369;{{ "%.2f"|format(u[8]) }}</td>
+      <td>&#8369;{{ "%.2f"|format(u[9]) }}</td>
     </tr>
     {% endfor %}
   </table>
 
   <div class="total">
-    Total: ₱{{ "%.2f"|format(total) }}
+    Total Balance: &#8369;{{ "%.2f"|format(total) }}
   </div>
 
   <button onclick="window.print()">Print Receipt</button>

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sari-Sari Utang Tracker</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -10,69 +11,73 @@
 <body>
 
 <div class="app">
-  <aside class="sidebar">
-    <h2>🛒 SARI-SARI STORE</h2>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <h2>SARI-SARI STORE</h2>
     <p>Utang Tracker</p>
 
     <nav>
-      <a href="/" class="{% if page == 'dashboard' %}active{% endif %}">🏠 Dashboard</a>
-      <a href="/customers" class="{% if page == 'customers' %}active{% endif %}">👥 Customers</a>
-      <a href="/products" class="{% if page == 'products' %}active{% endif %}">📦 Products</a>
-      <a href="/records" class="{% if page == 'records' %}active{% endif %}">🧾 Utang Records</a>
-      <a href="/reports" class="{% if page == 'reports' %}active{% endif %}">📊 Reports</a>
-      <a href="/settings" class="{% if page == 'settings' %}active{% endif %}">⚙️ Settings</a>
+      <a href="/" class="{% if page == 'dashboard' %}active{% endif %}"><i class="fas fa-home"></i> Dashboard</a>
+      <a href="/customers" class="{% if page == 'customers' %}active{% endif %}"><i class="fas fa-users"></i> Customers</a>
+      <a href="/products" class="{% if page == 'products' %}active{% endif %}"><i class="fas fa-box"></i> Products</a>
+      <a href="/records" class="{% if page == 'records' %}active{% endif %}"><i class="fas fa-receipt"></i> Utang Records</a>
+      <a href="/reports" class="{% if page == 'reports' %}active{% endif %}"><i class="fas fa-chart-column"></i> Reports</a>
+      <a href="/settings" class="{% if page == 'settings' %}active{% endif %}"><i class="fas fa-gear"></i> Settings</a>
     </nav>
 
     <div class="summary">
       <h3>Quick Summary</h3>
-      <p>Total Utang</p>
-      <strong>₱ {{ "%.2f"|format(total_utang) }}</strong>
+      <p>Total Unpaid</p>
+      <strong>&#8369; {{ "%.2f"|format(total_utang) }}</strong>
+      <p>Collected</p>
+      <strong>&#8369; {{ "%.2f"|format(total_paid) }}</strong>
       <p>Customers</p>
       <strong>{{ customers|length }}</strong>
-      <p>Products</p>
-      <strong>{{ products|length }}</strong>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
-      <button>☰</button>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
+        <i class="fas fa-bars"></i>
+      </button>
       <div>
-  👤 Owner
-  <a href="/logout" class="logout-btn">Logout</a>
-    </div>
+        <i class="fas fa-user"></i> Owner
+        <a href="/logout" class="logout-btn">Logout</a>
+      </div>
     </header>
 
     <section class="cards">
       <div class="stat">
-        <span>💰</span>
+        <span><i class="fas fa-wallet"></i></span>
         <div>
-          <p>Total Unpaid Utang</p>
-          <h2>₱ {{ "%.2f"|format(total_utang) }}</h2>
+          <p>Total Unpaid</p>
+          <h2>&#8369; {{ "%.2f"|format(total_utang) }}</h2>
         </div>
       </div>
 
       <div class="stat">
-        <span>👥</span>
+        <span><i class="fas fa-coins"></i></span>
+        <div>
+          <p>Total Paid</p>
+          <h2>&#8369; {{ "%.2f"|format(total_paid) }}</h2>
+        </div>
+      </div>
+
+      <div class="stat">
+        <span><i class="fas fa-calendar-plus"></i></span>
+        <div>
+          <p>Added Today</p>
+          <h2>&#8369; {{ "%.2f"|format(today_utang) }}</h2>
+        </div>
+      </div>
+
+      <div class="stat">
+        <span><i class="fas fa-users"></i></span>
         <div>
           <p>Customers</p>
           <h2>{{ customers|length }}</h2>
-        </div>
-      </div>
-
-      <div class="stat">
-        <span>📦</span>
-        <div>
-          <p>Products Listed</p>
-          <h2>{{ products|length }}</h2>
-        </div>
-      </div>
-
-      <div class="stat">
-        <span>🧾</span>
-        <div>
-          <p>Records</p>
-          <h2>{{ all_records|length }}</h2>
         </div>
       </div>
     </section>
@@ -80,7 +85,10 @@
     {% if page == "dashboard" %}
     <section class="content-grid">
       <div class="customer-panel">
-        <h3>Customers</h3>
+        <div class="panel-head">
+          <h3>Customers</h3>
+          <a href="/export/customers" class="icon-link" title="Export customers"><i class="fas fa-file-csv"></i></a>
+        </div>
         <input type="text" id="customerSearch" placeholder="Search customer...">
 
         {% if customers %}
@@ -88,7 +96,10 @@
             <a href="/customer/{{ customer[0] }}"
                class="customer customer-item {% if selected_customer and selected_customer[0] == customer[0] %}active-customer{% endif %}">
               <strong>{{ customer[1] }}</strong>
-              <span>₱ {{ "%.2f"|format(customer[2]) }}</span>
+              <span>&#8369; {{ "%.2f"|format(customer[2]) }}</span>
+              {% if customer[3] %}
+                <small>{{ customer[3] }}</small>
+              {% endif %}
             </a>
           {% endfor %}
         {% else %}
@@ -101,17 +112,36 @@
           <div class="details-head">
             <div>
               <h2>{{ selected_customer[1] }}</h2>
-              <p>Total Unpaid Utang: <b>₱ {{ "%.2f"|format(selected_total) }}</b></p>
+              <p>Total unpaid: <b>&#8369; {{ "%.2f"|format(selected_total) }}</b></p>
             </div>
 
-          <div class="actions">
+            <div class="actions">
               <a href="/print/{{ selected_customer[0] }}" class="print-btn">
                 <i class="fas fa-print"></i> Print
               </a>
+              <a href="/export/customer/{{ selected_customer[0] }}" class="blue-btn link-btn">
+                <i class="fas fa-file-csv"></i> Export
+              </a>
+              {% if selected_total > 0 %}
+                <form action="/mark-all-paid/{{ selected_customer[0] }}" method="POST" class="inline-form"
+                      onsubmit="return confirm('Mark all unpaid utang for this customer as paid?')">
+                  <button class="green-btn" type="submit">
+                    <i class="fas fa-check-double"></i> Mark All Paid
+                  </button>
+                </form>
+              {% endif %}
             </div>
           </div>
 
-          <table>
+          <form action="/update-customer/{{ selected_customer[0] }}" method="POST" class="customer-profile">
+            <input type="text" name="name" value="{{ selected_customer[1] }}" placeholder="Customer name" required>
+            <input type="text" name="phone" value="{{ selected_customer[2] }}" placeholder="Phone number">
+            <input type="text" name="address" value="{{ selected_customer[3] }}" placeholder="Address">
+            <textarea name="notes" placeholder="Notes">{{ selected_customer[4] }}</textarea>
+            <button class="green-btn" type="submit"><i class="fas fa-save"></i> Save Customer</button>
+          </form>
+
+          <table class="record-table">
             <thead>
               <tr>
                 <th>Date</th>
@@ -119,6 +149,8 @@
                 <th>Qty</th>
                 <th>Price</th>
                 <th>Total</th>
+                <th>Paid</th>
+                <th>Balance</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -128,53 +160,56 @@
               {% if utang_list %}
                 {% for u in utang_list %}
                   <tr>
-                    <td>{{ u[7] if u[7] else "-" }}</td>
-                    <td>{{ u[2] }}</td>
-                    <td>{{ u[3] }}</td>
-                    <td>₱{{ "%.2f"|format(u[4]) }}</td>
-                    <td>₱{{ "%.2f"|format(u[5]) }}</td>
-                    <td>
-                      <span class="badge {% if u[6] == 'PAID' %}paid{% else %}unpaid{% endif %}">
+                    <td data-label="Date">{{ u[7] if u[7] else "-" }}</td>
+                    <td data-label="Item">{{ u[2] }}</td>
+                    <td data-label="Qty">{{ u[3] }}</td>
+                    <td data-label="Price">&#8369;{{ "%.2f"|format(u[4]) }}</td>
+                    <td data-label="Total">&#8369;{{ "%.2f"|format(u[5]) }}</td>
+                    <td data-label="Paid">&#8369;{{ "%.2f"|format(u[8]) }}</td>
+                    <td data-label="Balance"><b>&#8369;{{ "%.2f"|format(u[9]) }}</b></td>
+                    <td data-label="Status">
+                      <span class="badge {% if u[6] == 'PAID' %}paid{% elif u[6] == 'PARTIAL' %}partial{% else %}unpaid{% endif %}">
                         {{ u[6] }}
                       </span>
                     </td>
-                    
+                    <td data-label="Action">
+                      <div class="row-actions">
+                        {% if u[9] > 0 %}
+                          <form action="/mark-paid/{{ u[0] }}/{{ selected_customer[0] }}" method="POST" class="inline-form"
+                                onsubmit="return confirm('Mark this utang as paid?')">
+                            <button class="action-btn paid-btn" type="submit">
+                              <i class="fas fa-check-circle"></i> Mark Paid
+                            </button>
+                          </form>
+                          <button class="action-btn paid-btn" type="button"
+                                  onclick="openPaymentModal({{ u[0]|tojson }}, {{ selected_customer[0]|tojson }}, {{ u[9]|tojson }}, {{ u[2]|tojson }})">
+                            <i class="fas fa-hand-holding-dollar"></i> Partial
+                          </button>
+                        {% endif %}
 
+                        <button class="action-btn edit-btn" type="button"
+                                onclick="window.location.href='/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}'">
+                          <i class="fas fa-edit"></i> Edit
+                        </button>
 
-                  <td>
-                    {% if u[6] == 'UNPAID' %}
-                      <!-- Mark as Paid Button with Icon -->
-                      <button class="action-btn paid-btn" onclick="openModal({{ u[0] }}, {{ selected_customer[0] }})">
-                        <i class="fas fa-check-circle"></i> Mark as Paid
-                      </button>
-                    {% else %}
-                      <span class="paid-text">Paid</span>
-                    {% endif %}
-                    
-                    <!-- Edit Button with Icon -->
-                    <button class="action-btn edit-btn" onclick="window.location.href='/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}'">
-                      <i class="fas fa-edit"></i> Edit
-                    </button>
-
-                    <!-- Delete Button with Icon -->
-                    <button class="action-btn delete-btn" onclick="openModal({{ u[0] }}, {{ selected_customer[0] }})">
-                      <i class="fas fa-trash-alt"></i> Delete
-                    </button>
-                  </td>
-
-
+                        <button class="action-btn delete-btn" type="button"
+                                onclick="openDeleteModal({{ u[0]|tojson }}, {{ selected_customer[0]|tojson }})">
+                          <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 {% endfor %}
               {% else %}
                 <tr>
-                  <td colspan="7">No utang records yet.</td>
+                  <td colspan="9">No unpaid utang records.</td>
                 </tr>
               {% endif %}
             </tbody>
           </table>
 
           <div class="total-row">
-            TOTAL UNPAID UTANG: <strong>₱ {{ "%.2f"|format(selected_total) }}</strong>
+            TOTAL UNPAID UTANG: <strong>&#8369; {{ "%.2f"|format(selected_total) }}</strong>
           </div>
 
           <div class="form-card">
@@ -197,11 +232,37 @@
                 <input type="text" name="price" id="priceInput" placeholder="Price" readonly required>
                 <input type="text" name="total" id="totalInput" placeholder="Total" readonly required>
 
-                <button class="green-btn" type="submit">Save Utang</button>
+                <button class="green-btn" type="submit"><i class="fas fa-save"></i> Save Utang</button>
               </div>
             </form>
+          </div>
 
-            <small>* Total is computed automatically</small>
+          <div class="history-panel">
+            <h3>Payment History</h3>
+            {% if payment_history %}
+              <table class="record-table compact-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Amount</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for payment in payment_history %}
+                    <tr>
+                      <td data-label="Date">{{ payment[3] }}</td>
+                      <td data-label="Item">{{ payment[1] or "-" }}</td>
+                      <td data-label="Amount">&#8369;{{ "%.2f"|format(payment[2]) }}</td>
+                      <td data-label="Note">{{ payment[4] or "-" }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <p class="empty">No payments yet.</p>
+            {% endif %}
           </div>
         {% else %}
           <div class="empty-state">
@@ -215,21 +276,32 @@
 
     {% if page == "customers" %}
     <section class="details">
-      <h2>Customer Management</h2>
+      <div class="details-head">
+        <h2>Customer Management</h2>
+        <a href="/export/customers" class="blue-btn link-btn"><i class="fas fa-file-csv"></i> Export CSV</a>
+      </div>
 
-      <form action="/add-customer" method="POST">
-        <input type="text" name="name" placeholder="Enter customer name..." required>
-        <button class="green-btn" type="submit">+ New Customer</button>
+      <form action="/add-customer" method="POST" class="customer-form">
+        <input type="text" name="name" placeholder="Customer name" required>
+        <input type="text" name="phone" placeholder="Phone number">
+        <input type="text" name="address" placeholder="Address">
+        <textarea name="notes" placeholder="Notes"></textarea>
+        <button class="green-btn" type="submit"><i class="fas fa-plus"></i> New Customer</button>
       </form>
 
       <input type="text" id="customerSearch" placeholder="Search customer...">
 
-      {% for customer in customers %}
-        <a href="/customer/{{ customer[0] }}" class="customer customer-item">
-          <strong>{{ customer[1] }}</strong>
-          <span>₱ {{ "%.2f"|format(customer[2]) }}</span>
-        </a>
-      {% endfor %}
+      <div class="customer-list">
+        {% for customer in customers %}
+          <a href="/customer/{{ customer[0] }}" class="customer customer-item">
+            <strong>{{ customer[1] }}</strong>
+            <span>&#8369; {{ "%.2f"|format(customer[2]) }}</span>
+            {% if customer[3] or customer[4] %}
+              <small>{{ customer[3] }}{% if customer[3] and customer[4] %} | {% endif %}{{ customer[4] }}</small>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
     </section>
     {% endif %}
 
@@ -243,14 +315,14 @@
       <form action="/add-product" method="POST" class="product-form">
         <input type="text" name="name" placeholder="Product name" required>
         <input type="number" name="price" placeholder="Price" step="0.01" required>
-        <button class="green-btn" type="submit">+ Add Product</button>
+        <button class="green-btn" type="submit"><i class="fas fa-plus"></i> Add Product</button>
       </form>
 
       <div class="product-list">
         {% for product in products %}
           <div class="product product-item">
-            📦 <b>{{ product[1] }}</b>
-            <span>₱{{ "%.2f"|format(product[2]) }}</span>
+            <i class="fas fa-box"></i> <b>{{ product[1] }}</b>
+            <span>&#8369;{{ "%.2f"|format(product[2]) }}</span>
 
             <a href="/delete-product/{{ product[0] }}"
                onclick="return confirm('Delete this product?')"
@@ -265,9 +337,31 @@
 
     {% if page == "records" %}
     <section class="details">
-      <h2>All Utang Records</h2>
+      <div class="details-head">
+        <h2>All Utang Records</h2>
+        <a href="/export/records" class="blue-btn link-btn"><i class="fas fa-file-csv"></i> Export All</a>
+      </div>
 
-      <table>
+      <form action="/records" method="GET" class="filter-bar">
+        <input type="text" name="search" value="{{ record_filters.search }}" placeholder="Search customer or item">
+        <select name="status">
+          <option value="" {% if not record_filters.status %}selected{% endif %}>All status</option>
+          <option value="OPEN" {% if record_filters.status == "OPEN" %}selected{% endif %}>Open balance</option>
+          <option value="UNPAID" {% if record_filters.status == "UNPAID" %}selected{% endif %}>Unpaid</option>
+          <option value="PARTIAL" {% if record_filters.status == "PARTIAL" %}selected{% endif %}>Partial</option>
+          <option value="PAID" {% if record_filters.status == "PAID" %}selected{% endif %}>Paid</option>
+        </select>
+        <select name="customer_id">
+          <option value="">All customers</option>
+          {% for customer in customers %}
+            <option value="{{ customer[0] }}" {% if record_filters.customer_id == customer[0]|string %}selected{% endif %}>{{ customer[1] }}</option>
+          {% endfor %}
+        </select>
+        <button class="green-btn" type="submit"><i class="fas fa-filter"></i> Filter</button>
+        <button class="blue-btn" type="submit" formaction="/export/records"><i class="fas fa-file-csv"></i> Export</button>
+      </form>
+
+      <table class="record-table">
         <thead>
           <tr>
             <th>Date</th>
@@ -276,6 +370,8 @@
             <th>Qty</th>
             <th>Price</th>
             <th>Total</th>
+            <th>Paid</th>
+            <th>Balance</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -283,17 +379,23 @@
         <tbody>
           {% for r in all_records %}
             <tr>
-              <td>{{ r[7] if r[7] else "-" }}</td>
-              <td>{{ r[1] }}</td>
-              <td>{{ r[2] }}</td>
-              <td>{{ r[3] }}</td>
-              <td>₱{{ "%.2f"|format(r[4]) }}</td>
-              <td>₱{{ "%.2f"|format(r[5]) }}</td>
-              <td>
-                <span class="badge {% if r[6] == 'PAID' %}paid{% else %}unpaid{% endif %}">
+              <td data-label="Date">{{ r[7] if r[7] else "-" }}</td>
+              <td data-label="Customer">{{ r[1] }}</td>
+              <td data-label="Item">{{ r[2] }}</td>
+              <td data-label="Qty">{{ r[3] }}</td>
+              <td data-label="Price">&#8369;{{ "%.2f"|format(r[4]) }}</td>
+              <td data-label="Total">&#8369;{{ "%.2f"|format(r[5]) }}</td>
+              <td data-label="Paid">&#8369;{{ "%.2f"|format(r[8]) }}</td>
+              <td data-label="Balance"><b>&#8369;{{ "%.2f"|format(r[9]) }}</b></td>
+              <td data-label="Status">
+                <span class="badge {% if r[6] == 'PAID' %}paid{% elif r[6] == 'PARTIAL' %}partial{% else %}unpaid{% endif %}">
                   {{ r[6] }}
                 </span>
               </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="9">No records found.</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -303,40 +405,54 @@
 
     {% if page == "reports" %}
     <section class="details">
-      <h2>Reports</h2>
+      <div class="details-head">
+        <h2>Reports</h2>
+        <div class="actions">
+          <a href="/export/customers" class="blue-btn link-btn"><i class="fas fa-users"></i> Customers CSV</a>
+          <a href="/export/records" class="blue-btn link-btn"><i class="fas fa-receipt"></i> Records CSV</a>
+        </div>
+      </div>
 
-      <div class="cards">
+      <div class="cards report-cards">
         <div class="stat">
-          <span>💸</span>
+          <span><i class="fas fa-wallet"></i></span>
           <div>
             <p>Total Unpaid</p>
-            <h2>₱ {{ "%.2f"|format(total_utang) }}</h2>
+            <h2>&#8369; {{ "%.2f"|format(total_utang) }}</h2>
           </div>
         </div>
 
         <div class="stat">
-          <span>💰</span>
+          <span><i class="fas fa-coins"></i></span>
           <div>
             <p>Total Paid</p>
-            <h2>₱ {{ "%.2f"|format(total_paid) }}</h2>
+            <h2>&#8369; {{ "%.2f"|format(total_paid) }}</h2>
           </div>
         </div>
 
         <div class="stat">
-          <span>📅</span>
+          <span><i class="fas fa-calendar-day"></i></span>
           <div>
-            <p>Today's Added Utang</p>
-            <h2>₱ {{ "%.2f"|format(today_utang) }}</h2>
+            <p>Paid Today</p>
+            <h2>&#8369; {{ "%.2f"|format(today_payments) }}</h2>
           </div>
         </div>
 
         <div class="stat">
-          <span>👑</span>
+          <span><i class="fas fa-receipt"></i></span>
+          <div>
+            <p>Records</p>
+            <h2>{{ all_records|length }}</h2>
+          </div>
+        </div>
+
+        <div class="stat">
+          <span><i class="fas fa-crown"></i></span>
           <div>
             <p>Top Customer</p>
             {% if top_customer %}
               <h2>{{ top_customer[0] }}</h2>
-              <p>₱ {{ "%.2f"|format(top_customer[1]) }}</p>
+              <p>&#8369; {{ "%.2f"|format(top_customer[1]) }}</p>
             {% else %}
               <h2>None</h2>
             {% endif %}
@@ -355,6 +471,36 @@
           <canvas id="paidChart"></canvas>
         </div>
       </div>
+
+      <div class="history-panel">
+        <h3>Recent Payments</h3>
+        {% if recent_payments %}
+          <table class="record-table compact-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Item</th>
+                <th>Amount</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for payment in recent_payments %}
+                <tr>
+                  <td data-label="Date">{{ payment[4] }}</td>
+                  <td data-label="Customer">{{ payment[1] }}</td>
+                  <td data-label="Item">{{ payment[2] or "-" }}</td>
+                  <td data-label="Amount">&#8369;{{ "%.2f"|format(payment[3]) }}</td>
+                  <td data-label="Note">{{ payment[5] or "-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="empty">No payments yet.</p>
+        {% endif %}
+      </div>
     </section>
     {% endif %}
 
@@ -367,43 +513,104 @@
   </main>
 </div>
 
-<!-- Modal for Delete Confirmation -->
 <div id="deleteModal" class="modal">
   <div class="modal-content">
-    <h2>Are you sure?</h2>
-    <p>Do you really want to delete this utang record?</p>
+    <h2>Delete record?</h2>
+    <p>This will remove the utang record and its payment history.</p>
     <div class="modal-buttons">
-      <button id="confirmDelete" class="green-btn">Yes</button>
-      <button id="cancelDelete" class="red-btn">No</button>
+      <button id="confirmDelete" class="red-btn" type="button">Delete</button>
+      <button id="cancelDelete" class="blue-btn" type="button">Cancel</button>
     </div>
   </div>
 </div>
 
+<div id="paymentModal" class="modal">
+  <div class="modal-content">
+    <h2>Record Payment</h2>
+    <p id="paymentItem"></p>
+    <form action="/add-payment" method="POST" class="payment-form">
+      <input type="hidden" name="utang_id" id="paymentUtangId">
+      <input type="hidden" name="customer_id" id="paymentCustomerId">
+      <label>Amount</label>
+      <input type="number" name="amount" id="paymentAmount" min="0.01" step="0.01" required>
+      <small id="paymentRemaining"></small>
+      <label>Note</label>
+      <input type="text" name="note" placeholder="Optional note">
+      <div class="modal-buttons">
+        <button class="green-btn" type="submit">Save Payment</button>
+        <button id="cancelPayment" class="blue-btn" type="button">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+  const sidebar = document.getElementById("sidebar");
+  const sidebarOverlay = document.getElementById("sidebarOverlay");
 
-  const modal = document.getElementById("deleteModal");
-const confirmDeleteBtn = document.getElementById("confirmDelete");
-const cancelDeleteBtn = document.getElementById("cancelDelete");
+  if (mobileMenuBtn && sidebar && sidebarOverlay) {
+    mobileMenuBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("active");
+      sidebarOverlay.classList.toggle("active");
+    });
 
-function openModal(utId, custId) {
-  modal.style.display = "block";  // Show the modal
-  confirmDeleteBtn.onclick = function() {
-    window.location.href = `/delete-utang/${utId}/${custId}`;  // Perform delete action
-    modal.style.display = "none";  // Close the modal when confirmed
-  };
-  cancelDeleteBtn.onclick = function() {
-    modal.style.display = "none";  // Close the modal when cancelled
-  };
-}
-
-window.onclick = function(event) {
-  if (event.target == modal) {
-    modal.style.display = "none";  // Close modal if clicked outside
+    sidebarOverlay.addEventListener("click", () => {
+      sidebar.classList.remove("active");
+      sidebarOverlay.classList.remove("active");
+    });
   }
-};
 
+  const deleteModal = document.getElementById("deleteModal");
+  const confirmDeleteBtn = document.getElementById("confirmDelete");
+  const cancelDeleteBtn = document.getElementById("cancelDelete");
 
+  function openDeleteModal(utId, custId) {
+    deleteModal.style.display = "block";
+    confirmDeleteBtn.onclick = function() {
+      window.location.href = `/delete-utang/${utId}/${custId}`;
+    };
+  }
 
+  if (cancelDeleteBtn) {
+    cancelDeleteBtn.addEventListener("click", () => {
+      deleteModal.style.display = "none";
+    });
+  }
+
+  const paymentModal = document.getElementById("paymentModal");
+  const paymentUtangId = document.getElementById("paymentUtangId");
+  const paymentCustomerId = document.getElementById("paymentCustomerId");
+  const paymentAmount = document.getElementById("paymentAmount");
+  const paymentItem = document.getElementById("paymentItem");
+  const paymentRemaining = document.getElementById("paymentRemaining");
+  const cancelPayment = document.getElementById("cancelPayment");
+
+  function openPaymentModal(utId, custId, balance, itemName) {
+    const amount = Number(balance || 0);
+    paymentUtangId.value = utId;
+    paymentCustomerId.value = custId;
+    paymentAmount.value = amount.toFixed(2);
+    paymentAmount.max = amount.toFixed(2);
+    paymentItem.textContent = itemName;
+    paymentRemaining.textContent = `Remaining balance: \u20B1${amount.toFixed(2)}`;
+    paymentModal.style.display = "block";
+  }
+
+  if (cancelPayment) {
+    cancelPayment.addEventListener("click", () => {
+      paymentModal.style.display = "none";
+    });
+  }
+
+  window.onclick = function(event) {
+    if (event.target == deleteModal) {
+      deleteModal.style.display = "none";
+    }
+    if (event.target == paymentModal) {
+      paymentModal.style.display = "none";
+    }
+  };
 
   const itemSelect = document.getElementById("itemSelect");
   const quantityInput = document.getElementById("quantityInput");
@@ -461,7 +668,7 @@ window.onclick = function(event) {
     const unpaidTotal = {{ total_utang|tojson }};
     const paidTotal = {{ total_paid|tojson }};
 
-    const moneyFormat = (value) => "₱" + Number(value).toLocaleString();
+    const moneyFormat = (value) => "\u20B1" + Number(value).toLocaleString();
 
     const customerCanvas = document.getElementById("customerChart");
     const paidCanvas = document.getElementById("paidChart");
@@ -498,7 +705,7 @@ window.onclick = function(event) {
               beginAtZero: true,
               ticks: {
                 callback: function(value) {
-                  return "₱" + value;
+                  return "\u20B1" + value;
                 }
               }
             },
