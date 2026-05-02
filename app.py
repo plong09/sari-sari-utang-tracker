@@ -5,11 +5,15 @@ from functools import wraps
 from io import StringIO
 import os
 import sqlite3
+import threading
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 try:
     import psycopg2
+    from psycopg2 import pool as psycopg2_pool
 except ImportError:
     psycopg2 = None
+    psycopg2_pool = None
 
 from dotenv import load_dotenv
 
@@ -30,10 +34,15 @@ PASSWORD = os.getenv("PASSWORD")
 DATABASE_URL = os.getenv("DATABASE_URL")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "database.db")
 USE_POSTGRES = bool(DATABASE_URL)
+POSTGRES_POOL_MAX = int(os.getenv("POSTGRES_POOL_MAX", "3"))
+DB_CONNECT_TIMEOUT = int(os.getenv("DB_CONNECT_TIMEOUT", "10"))
 
 BALANCE_SQL = "(utang.total - COALESCE(utang.amount_paid, 0))"
 PRIMARY_KEY_SQL = "SERIAL PRIMARY KEY" if USE_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
 PAID_CAP_SQL = "LEAST(COALESCE(amount_paid, 0), ?)" if USE_POSTGRES else "MIN(COALESCE(amount_paid, 0), ?)"
+POSTGRES_POOL = None
+DB_INITIALIZED = False
+DB_INIT_LOCK = threading.Lock()
 
 
 # ---------------- LOGIN PROTECTION ---------------- #
@@ -74,7 +83,84 @@ def healthz():
     return "ok", 200
 
 
+@app.route("/warmup")
+def warmup():
+    ensure_db_initialized()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1")
+    conn.close()
+    return "warm", 200
+
+
+@app.before_request
+def initialize_database_before_protected_pages():
+    if request.endpoint in {"healthz", "warmup", "login", "logout"}:
+        return
+
+    ensure_db_initialized()
+
+
 # ---------------- DATABASE ---------------- #
+
+def normalized_database_url(database_url):
+    if not database_url:
+        return database_url
+
+    parsed = urlsplit(database_url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+
+    if query.get("sslmode") == "req":
+        query["sslmode"] = "require"
+
+    return urlunsplit((
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        urlencode(query),
+        parsed.fragment
+    ))
+
+
+def get_postgres_pool():
+    global POSTGRES_POOL
+
+    if POSTGRES_POOL is None:
+        if psycopg2_pool is None:
+            raise RuntimeError("DATABASE_URL is set, but psycopg2 is not installed.")
+
+        POSTGRES_POOL = psycopg2_pool.SimpleConnectionPool(
+            1,
+            POSTGRES_POOL_MAX,
+            normalized_database_url(DATABASE_URL),
+            connect_timeout=DB_CONNECT_TIMEOUT,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5
+        )
+
+    return POSTGRES_POOL
+
+
+def get_postgres_connection():
+    connection_pool = get_postgres_pool()
+    connection = connection_pool.getconn()
+
+    if connection.closed:
+        connection_pool.putconn(connection, close=True)
+        connection = connection_pool.getconn()
+
+    try:
+        validation_cursor = connection.cursor()
+        validation_cursor.execute("SELECT 1")
+        validation_cursor.close()
+    except Exception:
+        connection_pool.putconn(connection, close=True)
+        connection = connection_pool.getconn()
+
+    return DatabaseConnection(connection, connection_pool)
+
 
 class DatabaseCursor:
     def __init__(self, cursor):
@@ -102,8 +188,9 @@ class DatabaseCursor:
 
 
 class DatabaseConnection:
-    def __init__(self, connection):
+    def __init__(self, connection, connection_pool=None):
         self.connection = connection
+        self.connection_pool = connection_pool
 
     def cursor(self):
         return DatabaseCursor(self.connection.cursor())
@@ -112,6 +199,14 @@ class DatabaseConnection:
         self.connection.commit()
 
     def close(self):
+        if self.connection_pool:
+            try:
+                self.connection.rollback()
+            except Exception:
+                pass
+            self.connection_pool.putconn(self.connection)
+            return
+
         self.connection.close()
 
 
@@ -119,7 +214,7 @@ def get_db():
     if USE_POSTGRES:
         if psycopg2 is None:
             raise RuntimeError("DATABASE_URL is set, but psycopg2 is not installed.")
-        return DatabaseConnection(psycopg2.connect(DATABASE_URL))
+        return get_postgres_connection()
 
     database_dir = os.path.dirname(DATABASE_PATH)
     if database_dir:
@@ -147,6 +242,20 @@ def get_columns(cursor, table):
 def add_column_if_missing(cursor, table, column, ddl):
     if column not in get_columns(cursor, table):
         cursor.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+
+
+def ensure_db_initialized():
+    global DB_INITIALIZED
+
+    if DB_INITIALIZED:
+        return
+
+    with DB_INIT_LOCK:
+        if DB_INITIALIZED:
+            return
+
+        init_db()
+        DB_INITIALIZED = True
 
 
 def sync_utang_status(cursor, utang_id=None):
@@ -1002,10 +1111,8 @@ def export_customer(customer_id):
     )
 
 
-init_db()
-
-
 if __name__ == "__main__":
+    ensure_db_initialized()
     app.run(
         host="0.0.0.0",
         port=int(os.getenv("PORT", 5000)),

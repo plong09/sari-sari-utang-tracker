@@ -20,3 +20,7 @@ Set `USER_NAME`, `PASSWORD`, and `DATABASE_URL` in the Render dashboard when pro
 If you already have live data in SQLite, export or migrate it before switching the deployed service to Postgres. The new Postgres database starts empty except for the default products inserted by the app.
 
 Render Free Postgres expires after 30 days and has no backups, so it is not recommended for real store records. A free external Postgres database is a better free option, but you should still export backups regularly.
+
+## Free hosting performance
+
+Render Free web services and some free Postgres providers can sleep after inactivity. The first request after sleeping can be slow. This app includes `/warmup`, which initializes the database and runs a tiny `SELECT 1` query. You can open it manually, or use an uptime monitor to ping it occasionally if you want fewer cold starts.
