@@ -336,11 +336,10 @@
             <i class="fas fa-box"></i> <b>{{ product[1] }}</b>
             <span>&#8369;{{ "%.2f"|format(product[2]) }}</span>
 
-            <a href="/delete-product/{{ product[0] }}"
-               class="delete-product js-confirm-link"
-               data-confirm="Delete this product?">
-              Delete
-            </a>
+            <form action="/delete-product/{{ product[0] }}" method="POST" class="inline-form js-confirm-form"
+                  data-confirm="Delete this product?">
+              <button class="delete-product" type="submit">Delete</button>
+            </form>
           </div>
         {% endfor %}
       </div>
@@ -529,10 +528,12 @@
   <div class="modal-content">
     <h2>Delete record?</h2>
     <p>This will remove the utang record and its payment history.</p>
-    <div class="modal-buttons">
-      <button id="confirmDelete" class="red-btn" type="button">Delete</button>
-      <button id="cancelDelete" class="blue-btn" type="button">Cancel</button>
-    </div>
+    <form id="deleteForm" method="POST">
+      <div class="modal-buttons">
+        <button id="confirmDelete" class="red-btn" type="submit">Delete</button>
+        <button id="cancelDelete" class="blue-btn" type="button">Cancel</button>
+      </div>
+    </form>
   </div>
 </div>
 

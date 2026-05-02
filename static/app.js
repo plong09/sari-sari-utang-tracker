@@ -56,16 +56,14 @@
 
   function initDeleteModal() {
     const deleteModal = document.getElementById("deleteModal");
-    const confirmDeleteBtn = document.getElementById("confirmDelete");
+    const deleteForm = document.getElementById("deleteForm");
     const cancelDeleteBtn = document.getElementById("cancelDelete");
 
     function openDeleteModal(utangId, customerId) {
-      if (!deleteModal || !confirmDeleteBtn) return;
+      if (!deleteModal || !deleteForm) return;
 
+      deleteForm.action = `/delete-utang/${utangId}/${customerId}`;
       showModal(deleteModal);
-      confirmDeleteBtn.onclick = function () {
-        window.location.href = `/delete-utang/${utangId}/${customerId}`;
-      };
     }
 
     window.openDeleteModal = openDeleteModal;
@@ -184,6 +182,15 @@
     document.querySelectorAll(".js-confirm-link").forEach((link) => {
       link.addEventListener("click", (event) => {
         const message = link.dataset.confirm || "Are you sure?";
+        if (!window.confirm(message)) {
+          event.preventDefault();
+        }
+      });
+    });
+
+    document.querySelectorAll(".js-confirm-form").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        const message = form.dataset.confirm || "Are you sure?";
         if (!window.confirm(message)) {
           event.preventDefault();
         }

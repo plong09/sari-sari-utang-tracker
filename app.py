@@ -9,13 +9,20 @@ import sqlite3
 from dotenv import load_dotenv
 
 
-app = Flask(__name__)
-app.secret_key = "change-this-secret-key"
-
 load_dotenv()
+
+app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-only-change-this-secret")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax"
+)
+if os.getenv("RENDER"):
+    app.config["SESSION_COOKIE_SECURE"] = True
 
 USER_NAME = os.getenv("USER_NAME")
 PASSWORD = os.getenv("PASSWORD")
+DATABASE_PATH = os.getenv("DATABASE_PATH", "database.db")
 
 BALANCE_SQL = "(utang.total - COALESCE(utang.amount_paid, 0))"
 
@@ -53,10 +60,19 @@ def logout():
     return redirect("/login")
 
 
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
+
+
 # ---------------- DATABASE ---------------- #
 
 def get_db():
-    return sqlite3.connect("database.db")
+    database_dir = os.path.dirname(DATABASE_PATH)
+    if database_dir:
+        os.makedirs(database_dir, exist_ok=True)
+
+    return sqlite3.connect(DATABASE_PATH, timeout=30)
 
 
 def get_columns(cursor, table):
@@ -641,7 +657,7 @@ def add_product():
     return redirect("/products")
 
 
-@app.route("/delete-product/<int:id>")
+@app.route("/delete-product/<int:id>", methods=["POST"])
 @login_required
 def delete_product(id):
     conn = get_db()
@@ -712,7 +728,7 @@ def add_customer_payment():
     return redirect(f"/customer/{customer_id}")
 
 
-@app.route("/delete-utang/<int:id>/<int:cid>")
+@app.route("/delete-utang/<int:id>/<int:cid>", methods=["POST"])
 @login_required
 def delete_utang(id, cid):
     conn = get_db()
@@ -725,7 +741,7 @@ def delete_utang(id, cid):
     return redirect(f"/customer/{cid}")
 
 
-@app.route("/mark-paid/<int:utang_id>/<int:customer_id>", methods=["GET", "POST"])
+@app.route("/mark-paid/<int:utang_id>/<int:customer_id>", methods=["POST"])
 @login_required
 def mark_paid(utang_id, customer_id):
     conn = get_db()
@@ -922,6 +938,12 @@ def export_customer(customer_id):
     )
 
 
+init_db()
+
+
 if __name__ == "__main__":
-    init_db()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 5000)),
+        debug=os.getenv("FLASK_DEBUG") == "1"
+    )
