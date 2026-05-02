@@ -6,6 +6,11 @@ from io import StringIO
 import os
 import sqlite3
 
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
 from dotenv import load_dotenv
 
 
@@ -22,9 +27,13 @@ if os.getenv("RENDER"):
 
 USER_NAME = os.getenv("USER_NAME")
 PASSWORD = os.getenv("PASSWORD")
+DATABASE_URL = os.getenv("DATABASE_URL")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "database.db")
+USE_POSTGRES = bool(DATABASE_URL)
 
 BALANCE_SQL = "(utang.total - COALESCE(utang.amount_paid, 0))"
+PRIMARY_KEY_SQL = "SERIAL PRIMARY KEY" if USE_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
+PAID_CAP_SQL = "LEAST(COALESCE(amount_paid, 0), ?)" if USE_POSTGRES else "MIN(COALESCE(amount_paid, 0), ?)"
 
 
 # ---------------- LOGIN PROTECTION ---------------- #
@@ -67,7 +76,51 @@ def healthz():
 
 # ---------------- DATABASE ---------------- #
 
+class DatabaseCursor:
+    def __init__(self, cursor):
+        self.cursor = cursor
+
+    def execute(self, query, params=None):
+        if USE_POSTGRES:
+            query = query.replace("?", "%s")
+
+        if params is None:
+            return self.cursor.execute(query)
+
+        return self.cursor.execute(query, params)
+
+    def executemany(self, query, params):
+        if USE_POSTGRES:
+            query = query.replace("?", "%s")
+        return self.cursor.executemany(query, params)
+
+    def fetchone(self):
+        return self.cursor.fetchone()
+
+    def fetchall(self):
+        return self.cursor.fetchall()
+
+
+class DatabaseConnection:
+    def __init__(self, connection):
+        self.connection = connection
+
+    def cursor(self):
+        return DatabaseCursor(self.connection.cursor())
+
+    def commit(self):
+        self.connection.commit()
+
+    def close(self):
+        self.connection.close()
+
+
 def get_db():
+    if USE_POSTGRES:
+        if psycopg2 is None:
+            raise RuntimeError("DATABASE_URL is set, but psycopg2 is not installed.")
+        return DatabaseConnection(psycopg2.connect(DATABASE_URL))
+
     database_dir = os.path.dirname(DATABASE_PATH)
     if database_dir:
         os.makedirs(database_dir, exist_ok=True)
@@ -76,6 +129,17 @@ def get_db():
 
 
 def get_columns(cursor, table):
+    if USE_POSTGRES:
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema='public' AND table_name=?
+            """,
+            (table,)
+        )
+        return [column[0] for column in cursor.fetchall()]
+
     cursor.execute(f"PRAGMA table_info({table})")
     return [column[1] for column in cursor.fetchall()]
 
@@ -125,22 +189,22 @@ def init_db():
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {primary_key},
         name TEXT
     )
-    """)
+    """.format(primary_key=PRIMARY_KEY_SQL))
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {primary_key},
         name TEXT,
         price REAL
     )
-    """)
+    """.format(primary_key=PRIMARY_KEY_SQL))
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS utang (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {primary_key},
         customer_id INTEGER,
         item_name TEXT,
         quantity INTEGER,
@@ -148,7 +212,7 @@ def init_db():
         total REAL,
         status TEXT DEFAULT 'UNPAID'
     )
-    """)
+    """.format(primary_key=PRIMARY_KEY_SQL))
 
     add_column_if_missing(cursor, "customers", "phone", "phone TEXT DEFAULT ''")
     add_column_if_missing(cursor, "customers", "address", "address TEXT DEFAULT ''")
@@ -159,7 +223,7 @@ def init_db():
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS payments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id {primary_key},
         customer_id INTEGER,
         utang_id INTEGER,
         amount REAL,
@@ -168,7 +232,7 @@ def init_db():
         FOREIGN KEY(customer_id) REFERENCES customers(id),
         FOREIGN KEY(utang_id) REFERENCES utang(id)
     )
-    """)
+    """.format(primary_key=PRIMARY_KEY_SQL))
 
     cursor.execute("""
         UPDATE utang
@@ -797,13 +861,13 @@ def edit_utang(utang_id, customer_id):
         price = float(request.form["price"])
         total = quantity * price
 
-        cursor.execute("""
+        cursor.execute(f"""
         UPDATE utang
         SET item_name = ?,
             quantity = ?,
             price = ?,
             total = ?,
-            amount_paid = MIN(COALESCE(amount_paid, 0), ?)
+            amount_paid = {PAID_CAP_SQL}
         WHERE id = ?
         """, (item_name, quantity, price, total, total, utang_id))
         sync_utang_status(cursor, utang_id)
