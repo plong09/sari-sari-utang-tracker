@@ -439,87 +439,170 @@
   }
 
   function initCharts(appData) {
-    if (appData.page !== "reports" || typeof Chart === "undefined") return;
+    if (appData.page !== "reports") return;
 
     const customerCanvas = document.getElementById("customerChart");
     const paidCanvas = document.getElementById("paidChart");
     const customerNames = appData.customerChartNames || [];
-    const customerTotals = appData.customerChartTotals || [];
-    const unpaidTotal = appData.totalUtang || 0;
-    const paidTotal = appData.totalPaid || 0;
+    const customerTotals = (appData.customerChartTotals || []).map(Number);
+    const unpaidTotal = Number(appData.totalUtang || 0);
+    const paidTotal = Number(appData.totalPaid || 0);
 
-    if (customerCanvas) {
-      new Chart(customerCanvas, {
-        type: "bar",
-        data: {
-          labels: customerNames,
-          datasets: [{
-            label: "Unpaid Balance",
-            data: customerTotals,
-            backgroundColor: "rgba(53, 168, 77, 0.85)",
-            borderColor: "#16803a",
-            borderWidth: 1,
-            borderRadius: 8,
-            barThickness: 55
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return "Unpaid: " + moneyFormat(context.raw);
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                callback: function (value) {
-                  return "\u20B1" + value;
-                }
-              }
-            },
-            x: {
-              grid: { display: false }
-            }
-          }
-        }
+    function prepareCanvas(canvas) {
+      const ratio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(280, rect.width || 320);
+      const height = Math.max(240, rect.height || 300);
+      const context = canvas.getContext("2d");
+
+      canvas.width = Math.floor(width * ratio);
+      canvas.height = Math.floor(height * ratio);
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      context.clearRect(0, 0, width, height);
+
+      return { context, width, height };
+    }
+
+    function drawEmpty(context, width, height, label) {
+      context.fillStyle = "#64748b";
+      context.font = "600 14px Arial, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(label, width / 2, height / 2);
+    }
+
+    function shortLabel(label) {
+      const text = String(label || "");
+      return text.length > 16 ? text.slice(0, 15) + "..." : text;
+    }
+
+    function drawCustomerChart() {
+      if (!customerCanvas) return;
+
+      const { context, width, height } = prepareCanvas(customerCanvas);
+      const maxValue = Math.max(...customerTotals, 0);
+      if (!customerNames.length || maxValue <= 0) {
+        drawEmpty(context, width, height, "No unpaid balances yet");
+        return;
+      }
+
+      const padding = { top: 24, right: 16, bottom: 62, left: 64 };
+      const chartWidth = width - padding.left - padding.right;
+      const chartHeight = height - padding.top - padding.bottom;
+      const stepCount = 4;
+
+      context.strokeStyle = "#e5e7eb";
+      context.fillStyle = "#64748b";
+      context.font = "12px Arial, sans-serif";
+      context.textAlign = "right";
+      context.textBaseline = "middle";
+
+      for (let index = 0; index <= stepCount; index += 1) {
+        const y = padding.top + chartHeight - (chartHeight * index / stepCount);
+        const value = maxValue * index / stepCount;
+
+        context.beginPath();
+        context.moveTo(padding.left, y);
+        context.lineTo(width - padding.right, y);
+        context.stroke();
+        context.fillText(moneyFormat(value), padding.left - 8, y);
+      }
+
+      const slotWidth = chartWidth / customerTotals.length;
+      const barWidth = Math.min(58, slotWidth * 0.56);
+
+      customerTotals.forEach((value, index) => {
+        const barHeight = chartHeight * (value / maxValue);
+        const x = padding.left + index * slotWidth + (slotWidth - barWidth) / 2;
+        const y = padding.top + chartHeight - barHeight;
+
+        context.fillStyle = "#35a84d";
+        context.fillRect(x, y, barWidth, barHeight);
+        context.fillStyle = "#166534";
+        context.font = "700 12px Arial, sans-serif";
+        context.textAlign = "center";
+        context.textBaseline = "bottom";
+        context.fillText(moneyFormat(value), x + barWidth / 2, y - 6);
+
+        context.save();
+        context.translate(x + barWidth / 2, height - padding.bottom + 22);
+        context.rotate(-0.35);
+        context.fillStyle = "#334155";
+        context.font = "12px Arial, sans-serif";
+        context.textAlign = "right";
+        context.textBaseline = "middle";
+        context.fillText(shortLabel(customerNames[index]), 0, 0);
+        context.restore();
       });
     }
 
-    if (paidCanvas) {
-      new Chart(paidCanvas, {
-        type: "doughnut",
-        data: {
-          labels: ["Unpaid", "Paid"],
-          datasets: [{
-            data: [unpaidTotal, paidTotal],
-            backgroundColor: ["#ef4444", "#35a84d"],
-            borderWidth: 4,
-            hoverOffset: 10
-          }]
-        },
-        options: {
-          responsive: true,
-          cutout: "65%",
-          plugins: {
-            legend: { position: "bottom" },
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return context.label + ": " + moneyFormat(context.raw);
-                }
-              }
-            }
-          }
-        }
+    function drawPaidChart() {
+      if (!paidCanvas) return;
+
+      const { context, width, height } = prepareCanvas(paidCanvas);
+      const total = unpaidTotal + paidTotal;
+      if (total <= 0) {
+        drawEmpty(context, width, height, "No payment data yet");
+        return;
+      }
+
+      const centerX = width / 2;
+      const centerY = height / 2 - 16;
+      const radius = Math.min(width, height) * 0.24;
+      const lineWidth = Math.max(22, radius * 0.34);
+      const segments = [
+        { label: "Unpaid", value: unpaidTotal, color: "#ef4444" },
+        { label: "Paid", value: paidTotal, color: "#35a84d" }
+      ];
+      let startAngle = -Math.PI / 2;
+
+      segments.forEach((segment) => {
+        if (segment.value <= 0) return;
+
+        const endAngle = startAngle + (Math.PI * 2 * segment.value / total);
+        context.beginPath();
+        context.arc(centerX, centerY, radius, startAngle, endAngle);
+        context.strokeStyle = segment.color;
+        context.lineWidth = lineWidth;
+        context.lineCap = "butt";
+        context.stroke();
+        startAngle = endAngle;
+      });
+
+      context.fillStyle = "#172033";
+      context.font = "700 20px Arial, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(moneyFormat(total), centerX, centerY - 5);
+      context.fillStyle = "#64748b";
+      context.font = "12px Arial, sans-serif";
+      context.fillText("Total", centerX, centerY + 18);
+
+      const legendY = height - 32;
+      const legendStartX = Math.max(24, centerX - 102);
+      segments.forEach((segment, index) => {
+        const x = legendStartX + index * 126;
+        context.fillStyle = segment.color;
+        context.fillRect(x, legendY - 6, 12, 12);
+        context.fillStyle = "#334155";
+        context.font = "12px Arial, sans-serif";
+        context.textAlign = "left";
+        context.textBaseline = "middle";
+        context.fillText(`${segment.label}: ${moneyFormat(segment.value)}`, x + 18, legendY);
       });
     }
+
+    function renderCharts() {
+      drawCustomerChart();
+      drawPaidChart();
+    }
+
+    let resizeTimer;
+    renderCharts();
+    window.addEventListener("resize", () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(renderCharts, 150);
+    });
   }
 
   onReady(() => {

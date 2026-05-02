@@ -10,6 +10,57 @@ body {
   color: #172033;
 }
 
+.fas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  min-width: 1em;
+  font-style: normal;
+  line-height: 1;
+  text-rendering: auto;
+}
+
+.fas::before {
+  content: "\25CF";
+  font-family: "Segoe UI Symbol", "Arial Unicode MS", Arial, sans-serif;
+  font-weight: 700;
+}
+
+.fa-home::before { content: "\2302"; }
+.fa-users::before { content: "\25C9"; }
+.fa-box::before { content: "\25A3"; }
+.fa-receipt::before { content: "\2261"; }
+.fa-chart-column::before { content: "\25AE"; }
+.fa-gear::before { content: "\2699"; }
+.fa-user::before { content: "\25CF"; }
+.fa-wallet::before { content: "\25A3"; }
+.fa-coins::before { content: "$"; }
+.fa-calendar-plus::before { content: "+"; }
+.fa-file-csv::before {
+  content: "CSV";
+  font-size: 0.68em;
+  letter-spacing: 0;
+}
+.fa-print::before { content: "\2399"; }
+.fa-hand-holding-dollar::before { content: "$"; }
+.fa-check-double::before,
+.fa-check-circle::before { content: "\2713"; }
+.fa-save::before { content: "\25A3"; }
+.fa-edit::before { content: "\270E"; }
+.fa-trash-alt::before { content: "\2715"; }
+.fa-plus::before { content: "+"; }
+.fa-filter::before { content: "\25BD"; }
+.fa-calendar-day::before { content: "\25A1"; }
+.fa-crown::before { content: "\265B"; }
+.fa-circle-exclamation::before { content: "!"; }
+.fa-lock::before { content: "\26BF"; }
+.fa-eye::before { content: "\25C9"; }
+.fa-eye-slash::before { content: "\2298"; }
+.fa-sign-in-alt::before { content: "\2192"; }
+.fa-bars::before { content: "\2630"; }
+.fa-search::before { content: "\2315"; }
+
 /* Layout */
 .app {
   display: grid;
@@ -585,6 +636,7 @@ th {
 
 .chart-card canvas {
   width: 100% !important;
+  height: 320px;
   max-height: 320px;
 }
 

@@ -503,7 +503,7 @@ def collect_record_filters():
     }
 
 
-def get_all_records(cursor, filters=None):
+def get_record_where_sql(filters=None):
     filters = filters or {}
     where = []
     params = []
@@ -526,6 +526,25 @@ def get_all_records(cursor, filters=None):
         params.extend([f"%{search}%", f"%{search}%"])
 
     where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+    return where_sql, params
+
+
+def get_record_count(cursor, filters=None):
+    where_sql, params = get_record_where_sql(filters)
+    cursor.execute(
+        f"""
+        SELECT COUNT(*)
+        FROM utang
+        JOIN customers ON utang.customer_id = customers.id
+        {where_sql}
+        """,
+        params
+    )
+    return cursor.fetchone()[0]
+
+
+def get_all_records(cursor, filters=None):
+    where_sql, params = get_record_where_sql(filters)
     cursor.execute(
         f"""
         SELECT utang.id,
@@ -559,10 +578,16 @@ def get_common_data(
     conn = get_db()
     cursor = conn.cursor()
 
-    customers = get_customers(cursor)
+    needs_customer_list = page in {"dashboard", "customers", "records"} or selected_customer is not None
+    customers = get_customers(cursor) if needs_customer_list else []
+    if customers:
+        customer_count = len(customers)
+    else:
+        cursor.execute("SELECT COUNT(*) FROM customers")
+        customer_count = cursor.fetchone()[0]
 
     products = []
-    if page in {"dashboard", "products"}:
+    if page == "products" or selected_customer:
         cursor.execute("SELECT * FROM products ORDER BY name")
         products = cursor.fetchall()
 
@@ -589,9 +614,13 @@ def get_common_data(
     customer_chart = []
     recent_payments = []
     all_records = []
+    record_count = 0
 
-    if page in {"records", "reports"}:
+    if page == "records":
         all_records = get_all_records(cursor, filters)
+        record_count = len(all_records)
+    elif page == "reports":
+        record_count = get_record_count(cursor, filters)
 
     if page == "reports":
         cursor.execute(
@@ -642,6 +671,7 @@ def get_common_data(
     return {
         "page": page,
         "customers": customers,
+        "customer_count": customer_count,
         "products": products,
         "total_utang": total_utang,
         "total_paid": total_paid,
@@ -656,6 +686,7 @@ def get_common_data(
         "payment_history": payment_history or [],
         "recent_payments": recent_payments,
         "all_records": all_records,
+        "record_count": record_count,
         "record_filters": filters
     }
 
