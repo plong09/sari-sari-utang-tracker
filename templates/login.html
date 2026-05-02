@@ -4,40 +4,94 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login | Gundaya Store</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"> <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="login-body">
+  <main class="login-page">
+    <section class="login-card" aria-labelledby="login-title">
+      <div class="store-illustration" aria-hidden="true">
+        <div class="store-roof"></div>
+        <div class="store-awning">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="store-body">
+          <div class="store-window"></div>
+          <div class="store-door"></div>
+        </div>
+        <div class="store-shadow"></div>
+      </div>
 
-  <!-- Login Form -->
-  <div class="login-page">
-    <div class="login-card">
-      <div class="login-logo">
-        <i class="fas fa-store-alt"></i> <!-- Modern Store Icon -->
+      <div class="login-card-head">
+        <h1 id="login-title">Welcome to Gundaya Store</h1>
+        <p>Utang Tracker</p>
       </div>
-      <div class="center">
-        <h1>Welcome to Gundaya Store</h1>
-        <p>Please log in to manage your utang tracker.</p>
-      </div>
-      
 
       {% if error %}
-        <div class="login-error">{{ error }}</div>
+        <div class="login-error" role="alert">
+          <i class="fas fa-circle-exclamation"></i>
+          <span>{{ error }}</span>
+        </div>
       {% endif %}
 
-      <form method="POST">
-        <label>Username</label>
-        <input type="text" name="username" placeholder="Enter username" required>
+      <form method="POST" class="login-form">
+        <div class="login-field-grid">
+          <div class="login-field">
+            <label for="username">Username</label>
+            <div class="login-input">
+              <i class="fas fa-user"></i>
+              <input id="username" type="text" name="username" autocomplete="username" autofocus required>
+            </div>
+          </div>
 
-        <label>Password</label>
-        <input type="password" name="password" placeholder="Enter password" required>
+          <div class="login-field">
+            <label for="password">Password</label>
+            <div class="login-input">
+              <i class="fas fa-lock"></i>
+              <input id="password" type="password" name="password" autocomplete="current-password" required>
+              <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">
+                <i class="fas fa-eye"></i>
+                <span>Show</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <button type="submit" class="login-btn">
-          <i class="fas fa-sign-in-alt"></i> Login
+          <i class="fas fa-sign-in-alt"></i>
+          <span>Login</span>
         </button>
       </form>
-    </div>
-  </div>
 
+      <button class="forgot-link" type="button">Forgot Password?</button>
+    </section>
+  </main>
+
+  <script>
+    const passwordInput = document.getElementById("password");
+    const passwordToggle = document.querySelector(".password-toggle");
+
+    if (passwordInput && passwordToggle) {
+      passwordToggle.addEventListener("click", () => {
+        const isHidden = passwordInput.type === "password";
+        const icon = passwordToggle.querySelector("i");
+        const label = passwordToggle.querySelector("span");
+
+        passwordInput.type = isHidden ? "text" : "password";
+        passwordToggle.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+        passwordToggle.setAttribute("aria-pressed", String(isHidden));
+
+        if (icon) {
+          icon.className = isHidden ? "fas fa-eye-slash" : "fas fa-eye";
+        }
+
+        if (label) {
+          label.textContent = isHidden ? "Hide" : "Show";
+        }
+      });
+    }
+  </script>
 </body>
 </html>
