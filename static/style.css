@@ -19,6 +19,11 @@ body {
 
 /* Sidebar */
 .sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
   background: linear-gradient(180deg, #0f2235, #07111f);
   color: white;
   padding: 24px 18px;
@@ -255,6 +260,77 @@ th {
   display: grid;
   grid-template-columns: 2fr 0.7fr 1fr 1fr auto;
   gap: 12px;
+}
+
+.item-picker {
+  display: grid;
+  gap: 8px;
+  position: relative;
+}
+
+.item-search {
+  display: grid;
+  grid-template-columns: 1fr 46px;
+  gap: 8px;
+}
+
+.item-picker input,
+.item-picker select,
+.item-search button {
+  margin: 0;
+}
+
+.item-search button {
+  min-width: 46px;
+  padding: 0;
+}
+
+.item-suggestions {
+  border: 1px solid #d6dde8;
+  border-radius: 9px;
+  background: white;
+  max-height: 190px;
+  overflow-y: auto;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+}
+
+.item-suggestion {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  background: white;
+  color: #172033;
+  cursor: pointer;
+  text-align: left;
+}
+
+.item-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.item-suggestion:hover,
+.item-suggestion:focus {
+  background: #eef6ff;
+}
+
+.item-suggestion small {
+  color: #16a34a;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.item-suggestion-empty {
+  color: #64748b;
+  cursor: default;
+}
+
+.item-suggestion-empty:hover,
+.item-suggestion-empty:focus {
+  background: white;
 }
 
 /* Products */
@@ -802,6 +878,7 @@ th {
 .link-btn,
 .green-btn,
 .blue-btn,
+.yellow-btn,
 .red-btn,
 .print-btn {
   display: inline-flex;
@@ -1011,7 +1088,8 @@ th {
     flex-wrap: wrap;
   }
 
-  .actions a {
+  .actions a,
+  .actions button {
     flex: 1;
   }
 

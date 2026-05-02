@@ -242,6 +242,40 @@ def record_payment(cursor, utang_id, customer_id, amount, note=""):
     return applied_amount
 
 
+def record_customer_payment(cursor, customer_id, amount, note=""):
+    remaining_payment = money(amount)
+    if remaining_payment <= 0:
+        return 0
+
+    cursor.execute(
+        f"""
+        SELECT id, {BALANCE_SQL} AS balance
+        FROM utang
+        WHERE customer_id=? AND {BALANCE_SQL} > 0
+        ORDER BY id ASC
+        """,
+        (customer_id,)
+    )
+
+    applied_total = 0
+    payment_note = note or "Customer partial payment"
+    for utang_id, balance in cursor.fetchall():
+        if remaining_payment <= 0:
+            break
+
+        applied_amount = record_payment(
+            cursor,
+            utang_id,
+            customer_id,
+            min(remaining_payment, balance),
+            payment_note
+        )
+        applied_total = money(applied_total + applied_amount)
+        remaining_payment = money(remaining_payment - applied_amount)
+
+    return applied_total
+
+
 def get_customers(cursor):
     cursor.execute(f"""
         SELECT customers.id,
@@ -656,6 +690,22 @@ def add_payment():
     conn = get_db()
     cursor = conn.cursor()
     record_payment(cursor, utang_id, customer_id, amount, note)
+    conn.commit()
+    conn.close()
+
+    return redirect(f"/customer/{customer_id}")
+
+
+@app.route("/add-customer-payment", methods=["POST"])
+@login_required
+def add_customer_payment():
+    customer_id = int(request.form["customer_id"])
+    amount = request.form.get("amount", 0)
+    note = request.form.get("note", "").strip()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    record_customer_payment(cursor, customer_id, amount, note)
     conn.commit()
     conn.close()
 

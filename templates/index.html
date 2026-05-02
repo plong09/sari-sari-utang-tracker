@@ -123,12 +123,19 @@
                 <i class="fas fa-file-csv"></i> Export
               </a>
               {% if selected_total > 0 %}
-                <form action="/mark-all-paid/{{ selected_customer[0] }}" method="POST" class="inline-form"
-                      onsubmit="return confirm('Mark all unpaid utang for this customer as paid?')">
-                  <button class="green-btn" type="submit">
-                    <i class="fas fa-check-double"></i> Mark All Paid
-                  </button>
-                </form>
+                <button class="yellow-btn js-customer-payment-btn" type="button"
+                        data-customer-id="{{ selected_customer[0] }}"
+                        data-customer-name="{{ selected_customer[1]|e }}"
+                        data-balance="{{ selected_total }}">
+                  <i class="fas fa-hand-holding-dollar"></i> Partial
+                </button>
+                <button class="green-btn js-paid-btn" type="button"
+                        data-paid-action="/mark-all-paid/{{ selected_customer[0] }}"
+                        data-paid-title="Mark all paid?"
+                        data-paid-message="This will record the remaining balance for every unpaid utang as paid."
+                        data-paid-confirm="Mark All Paid">
+                  <i class="fas fa-check-double"></i> Mark All Paid
+                </button>
               {% endif %}
             </div>
           </div>
@@ -175,25 +182,20 @@
                     <td data-label="Action">
                       <div class="row-actions">
                         {% if u[9] > 0 %}
-                          <form action="/mark-paid/{{ u[0] }}/{{ selected_customer[0] }}" method="POST" class="inline-form"
-                                onsubmit="return confirm('Mark this utang as paid?')">
-                            <button class="action-btn paid-btn" type="submit">
-                              <i class="fas fa-check-circle"></i> Mark Paid
-                            </button>
-                          </form>
-                          <button class="action-btn paid-btn" type="button"
-                                  onclick="openPaymentModal({{ u[0]|tojson }}, {{ selected_customer[0]|tojson }}, {{ u[9]|tojson }}, {{ u[2]|tojson }})">
-                            <i class="fas fa-hand-holding-dollar"></i> Partial
+                          <button class="action-btn paid-btn js-paid-btn" type="button"
+                                  data-paid-action="/mark-paid/{{ u[0] }}/{{ selected_customer[0] }}">
+                            <i class="fas fa-check-circle"></i> Mark Paid
                           </button>
                         {% endif %}
 
-                        <button class="action-btn edit-btn" type="button"
-                                onclick="window.location.href='/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}'">
+                        <button class="action-btn edit-btn js-edit-utang-btn" type="button"
+                                data-edit-url="/edit-utang/{{ u[0] }}/{{ selected_customer[0] }}">
                           <i class="fas fa-edit"></i> Edit
                         </button>
 
-                        <button class="action-btn delete-btn" type="button"
-                                onclick="openDeleteModal({{ u[0]|tojson }}, {{ selected_customer[0]|tojson }})">
+                        <button class="action-btn delete-btn js-delete-utang-btn" type="button"
+                                data-utang-id="{{ u[0] }}"
+                                data-customer-id="{{ selected_customer[0] }}">
                           <i class="fas fa-trash-alt"></i> Delete
                         </button>
                       </div>
@@ -219,14 +221,24 @@
               <input type="hidden" name="customer_id" value="{{ selected_customer[0] }}">
 
               <div class="form-grid">
-                <select name="item_name" id="itemSelect" required>
-                  <option value="">Select item...</option>
-                  {% for product in products %}
-                    <option value="{{ product[1] }}" data-price="{{ product[2] }}">
-                      {{ product[1] }}
-                    </option>
-                  {% endfor %}
-                </select>
+                <div class="item-picker">
+                  <div class="item-search">
+                    <input type="text" id="itemSearch" placeholder="Search item...">
+                    <button class="blue-btn item-search-btn" id="itemSearchBtn" type="button" aria-label="Search item">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                  <div class="item-suggestions" id="itemSuggestions" hidden></div>
+
+                  <select name="item_name" id="itemSelect" required>
+                    <option value="">Select item...</option>
+                    {% for product in products %}
+                      <option value="{{ product[1] }}" data-price="{{ product[2] }}">
+                        {{ product[1] }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
 
                 <input type="number" name="quantity" id="quantityInput" value="1" min="1" required>
                 <input type="text" name="price" id="priceInput" placeholder="Price" readonly required>
@@ -325,8 +337,8 @@
             <span>&#8369;{{ "%.2f"|format(product[2]) }}</span>
 
             <a href="/delete-product/{{ product[0] }}"
-               onclick="return confirm('Delete this product?')"
-               class="delete-product">
+               class="delete-product js-confirm-link"
+               data-confirm="Delete this product?">
               Delete
             </a>
           </div>
@@ -524,12 +536,24 @@
   </div>
 </div>
 
+<div id="paidModal" class="modal">
+  <div class="modal-content">
+    <h2 id="paidModalTitle">Mark as paid?</h2>
+    <p id="paidModalMessage">This will record the remaining balance as a payment.</p>
+    <form id="paidForm" method="POST">
+      <div class="modal-buttons">
+        <button id="confirmPaid" class="green-btn" type="submit">Mark Paid</button>
+        <button id="cancelPaid" class="blue-btn" type="button">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="paymentModal" class="modal">
   <div class="modal-content">
     <h2>Record Payment</h2>
     <p id="paymentItem"></p>
-    <form action="/add-payment" method="POST" class="payment-form">
-      <input type="hidden" name="utang_id" id="paymentUtangId">
+    <form action="/add-customer-payment" method="POST" class="payment-form" id="paymentForm">
       <input type="hidden" name="customer_id" id="paymentCustomerId">
       <label>Amount</label>
       <input type="number" name="amount" id="paymentAmount" min="0.01" step="0.01" required>
@@ -544,209 +568,16 @@
   </div>
 </div>
 
-<script>
-  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-  const sidebar = document.getElementById("sidebar");
-  const sidebarOverlay = document.getElementById("sidebarOverlay");
-
-  if (mobileMenuBtn && sidebar && sidebarOverlay) {
-    mobileMenuBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("active");
-      sidebarOverlay.classList.toggle("active");
-    });
-
-    sidebarOverlay.addEventListener("click", () => {
-      sidebar.classList.remove("active");
-      sidebarOverlay.classList.remove("active");
-    });
-  }
-
-  const deleteModal = document.getElementById("deleteModal");
-  const confirmDeleteBtn = document.getElementById("confirmDelete");
-  const cancelDeleteBtn = document.getElementById("cancelDelete");
-
-  function openDeleteModal(utId, custId) {
-    deleteModal.style.display = "block";
-    confirmDeleteBtn.onclick = function() {
-      window.location.href = `/delete-utang/${utId}/${custId}`;
-    };
-  }
-
-  if (cancelDeleteBtn) {
-    cancelDeleteBtn.addEventListener("click", () => {
-      deleteModal.style.display = "none";
-    });
-  }
-
-  const paymentModal = document.getElementById("paymentModal");
-  const paymentUtangId = document.getElementById("paymentUtangId");
-  const paymentCustomerId = document.getElementById("paymentCustomerId");
-  const paymentAmount = document.getElementById("paymentAmount");
-  const paymentItem = document.getElementById("paymentItem");
-  const paymentRemaining = document.getElementById("paymentRemaining");
-  const cancelPayment = document.getElementById("cancelPayment");
-
-  function openPaymentModal(utId, custId, balance, itemName) {
-    const amount = Number(balance || 0);
-    paymentUtangId.value = utId;
-    paymentCustomerId.value = custId;
-    paymentAmount.value = amount.toFixed(2);
-    paymentAmount.max = amount.toFixed(2);
-    paymentItem.textContent = itemName;
-    paymentRemaining.textContent = `Remaining balance: \u20B1${amount.toFixed(2)}`;
-    paymentModal.style.display = "block";
-  }
-
-  if (cancelPayment) {
-    cancelPayment.addEventListener("click", () => {
-      paymentModal.style.display = "none";
-    });
-  }
-
-  window.onclick = function(event) {
-    if (event.target == deleteModal) {
-      deleteModal.style.display = "none";
-    }
-    if (event.target == paymentModal) {
-      paymentModal.style.display = "none";
-    }
-  };
-
-  const itemSelect = document.getElementById("itemSelect");
-  const quantityInput = document.getElementById("quantityInput");
-  const priceInput = document.getElementById("priceInput");
-  const totalInput = document.getElementById("totalInput");
-
-  function computeTotal() {
-    if (!itemSelect) return;
-
-    const selectedOption = itemSelect.options[itemSelect.selectedIndex];
-    const price = parseFloat(selectedOption.getAttribute("data-price")) || 0;
-    const quantity = parseInt(quantityInput.value) || 0;
-    const total = price * quantity;
-
-    priceInput.value = price ? price.toFixed(2) : "";
-    totalInput.value = total ? total.toFixed(2) : "";
-  }
-
-  if (itemSelect) {
-    itemSelect.addEventListener("change", computeTotal);
-    quantityInput.addEventListener("input", computeTotal);
-  }
-
-  const customerSearch = document.getElementById("customerSearch");
-  const customerItems = document.querySelectorAll(".customer-item");
-
-  if (customerSearch) {
-    customerSearch.addEventListener("input", () => {
-      const searchValue = customerSearch.value.toLowerCase();
-
-      customerItems.forEach((item) => {
-        const name = item.textContent.toLowerCase();
-        item.style.display = name.includes(searchValue) ? "block" : "none";
-      });
-    });
-  }
-
-  const productSearch = document.getElementById("productSearch");
-  const productItems = document.querySelectorAll(".product-item");
-
-  if (productSearch) {
-    productSearch.addEventListener("input", () => {
-      const searchValue = productSearch.value.toLowerCase();
-
-      productItems.forEach((item) => {
-        const name = item.textContent.toLowerCase();
-        item.style.display = name.includes(searchValue) ? "grid" : "none";
-      });
-    });
-  }
-
-  if ("{{ page }}" === "reports") {
-    const customerNames = {{ customer_chart_names|tojson }};
-    const customerTotals = {{ customer_chart_totals|tojson }};
-    const unpaidTotal = {{ total_utang|tojson }};
-    const paidTotal = {{ total_paid|tojson }};
-
-    const moneyFormat = (value) => "\u20B1" + Number(value).toLocaleString();
-
-    const customerCanvas = document.getElementById("customerChart");
-    const paidCanvas = document.getElementById("paidChart");
-
-    if (customerCanvas) {
-      new Chart(customerCanvas, {
-        type: "bar",
-        data: {
-          labels: customerNames,
-          datasets: [{
-            label: "Unpaid Balance",
-            data: customerTotals,
-            backgroundColor: "rgba(53, 168, 77, 0.85)",
-            borderColor: "#16803a",
-            borderWidth: 1,
-            borderRadius: 8,
-            barThickness: 55
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return "Unpaid: " + moneyFormat(context.raw);
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                callback: function(value) {
-                  return "\u20B1" + value;
-                }
-              }
-            },
-            x: {
-              grid: { display: false }
-            }
-          }
-        }
-      });
-    }
-
-    if (paidCanvas) {
-      new Chart(paidCanvas, {
-        type: "doughnut",
-        data: {
-          labels: ["Unpaid", "Paid"],
-          datasets: [{
-            data: [unpaidTotal, paidTotal],
-            backgroundColor: ["#ef4444", "#35a84d"],
-            borderWidth: 4,
-            hoverOffset: 10
-          }]
-        },
-        options: {
-          responsive: true,
-          cutout: "65%",
-          plugins: {
-            legend: { position: "bottom" },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return context.label + ": " + moneyFormat(context.raw);
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-  }
+<script id="app-data" type="application/json">
+  {{ {
+    "page": page,
+    "customerChartNames": customer_chart_names,
+    "customerChartTotals": customer_chart_totals,
+    "totalUtang": total_utang,
+    "totalPaid": total_paid
+  }|tojson }}
 </script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
 
 </body>
 </html>
