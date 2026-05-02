@@ -72,6 +72,7 @@
   <script>
     const passwordInput = document.getElementById("password");
     const passwordToggle = document.querySelector(".password-toggle");
+    const loginForm = document.querySelector(".login-form");
 
     if (passwordInput && passwordToggle) {
       passwordToggle.addEventListener("click", () => {
@@ -90,6 +91,20 @@
         if (label) {
           label.textContent = isHidden ? "Hide" : "Show";
         }
+      });
+    }
+
+    if (loginForm) {
+      loginForm.addEventListener("submit", (event) => {
+        if (event.defaultPrevented) return;
+
+        const button = loginForm.querySelector(".login-btn");
+        if (!button) return;
+
+        button.disabled = true;
+        button.classList.add("is-loading");
+        button.setAttribute("aria-busy", "true");
+        button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span><span>Logging in...</span>';
       });
     }
   </script>

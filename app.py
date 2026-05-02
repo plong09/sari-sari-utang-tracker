@@ -343,6 +343,14 @@ def init_db():
     )
     """.format(primary_key=PRIMARY_KEY_SQL))
 
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_utang_customer_id ON utang(customer_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_utang_status ON utang(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_utang_customer_status ON utang(customer_id, status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_payments_customer_id ON payments(customer_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_payments_utang_id ON payments(utang_id)")
+
     cursor.execute("""
         UPDATE utang
         SET amount_paid = total
@@ -553,8 +561,10 @@ def get_common_data(
 
     customers = get_customers(cursor)
 
-    cursor.execute("SELECT * FROM products ORDER BY name")
-    products = cursor.fetchall()
+    products = []
+    if page in {"dashboard", "products"}:
+        cursor.execute("SELECT * FROM products ORDER BY name")
+        products = cursor.fetchall()
 
     cursor.execute(f"""
         SELECT COALESCE(SUM(
@@ -573,51 +583,59 @@ def get_common_data(
     )
     today_utang = cursor.fetchone()[0]
 
-    cursor.execute(
-        "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_date LIKE ?",
-        (display_date() + "%",)
-    )
-    today_payments = cursor.fetchone()[0]
-
-    cursor.execute(f"""
-        SELECT customers.name, COALESCE(SUM({BALANCE_SQL}),0) AS balance
-        FROM customers
-        JOIN utang ON customers.id = utang.customer_id
-        WHERE {BALANCE_SQL} > 0
-        GROUP BY customers.id, customers.name
-        ORDER BY balance DESC
-        LIMIT 1
-    """)
-    top_customer = cursor.fetchone()
-
-    cursor.execute(f"""
-        SELECT customers.name, COALESCE(SUM({BALANCE_SQL}),0) AS balance
-        FROM customers
-        JOIN utang ON customers.id = utang.customer_id
-        WHERE {BALANCE_SQL} > 0
-        GROUP BY customers.id, customers.name
-        ORDER BY balance DESC
-        LIMIT 5
-    """)
-    customer_chart = cursor.fetchall()
-
-    cursor.execute("""
-        SELECT payments.id,
-               customers.name,
-               utang.item_name,
-               payments.amount,
-               payments.payment_date,
-               COALESCE(payments.note, '')
-        FROM payments
-        JOIN customers ON payments.customer_id = customers.id
-        LEFT JOIN utang ON payments.utang_id = utang.id
-        ORDER BY payments.id DESC
-        LIMIT 8
-    """)
-    recent_payments = cursor.fetchall()
-
     filters = record_filters or {}
-    all_records = get_all_records(cursor, filters)
+    today_payments = 0
+    top_customer = None
+    customer_chart = []
+    recent_payments = []
+    all_records = []
+
+    if page in {"records", "reports"}:
+        all_records = get_all_records(cursor, filters)
+
+    if page == "reports":
+        cursor.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_date LIKE ?",
+            (display_date() + "%",)
+        )
+        today_payments = cursor.fetchone()[0]
+
+        cursor.execute(f"""
+            SELECT customers.name, COALESCE(SUM({BALANCE_SQL}),0) AS balance
+            FROM customers
+            JOIN utang ON customers.id = utang.customer_id
+            WHERE {BALANCE_SQL} > 0
+            GROUP BY customers.id, customers.name
+            ORDER BY balance DESC
+            LIMIT 1
+        """)
+        top_customer = cursor.fetchone()
+
+        cursor.execute(f"""
+            SELECT customers.name, COALESCE(SUM({BALANCE_SQL}),0) AS balance
+            FROM customers
+            JOIN utang ON customers.id = utang.customer_id
+            WHERE {BALANCE_SQL} > 0
+            GROUP BY customers.id, customers.name
+            ORDER BY balance DESC
+            LIMIT 5
+        """)
+        customer_chart = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT payments.id,
+                   customers.name,
+                   utang.item_name,
+                   payments.amount,
+                   payments.payment_date,
+                   COALESCE(payments.note, '')
+            FROM payments
+            JOIN customers ON payments.customer_id = customers.id
+            LEFT JOIN utang ON payments.utang_id = utang.id
+            ORDER BY payments.id DESC
+            LIMIT 8
+        """)
+        recent_payments = cursor.fetchall()
 
     conn.close()
 

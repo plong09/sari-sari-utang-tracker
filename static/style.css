@@ -186,6 +186,37 @@ textarea {
   border-radius: 8px;
 }
 
+button.is-loading {
+  cursor: wait;
+  opacity: 0.88;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.button-spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  flex: 0 0 auto;
+  animation: button-spinner 0.75s linear infinite;
+}
+
+@keyframes button-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Customers */
 .customer {
   display: block;

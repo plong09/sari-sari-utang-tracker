@@ -36,6 +36,44 @@
     return "\u20B1" + Number(value || 0).toLocaleString();
   }
 
+  function setButtonLoading(button, loadingText) {
+    if (!button || button.classList.contains("is-loading")) return;
+
+    button.dataset.originalHtml = button.innerHTML;
+    button.classList.add("is-loading");
+    button.setAttribute("aria-busy", "true");
+    button.disabled = true;
+
+    button.innerHTML = "";
+
+    const spinner = document.createElement("span");
+    const label = document.createElement("span");
+
+    spinner.className = "button-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    label.textContent = loadingText;
+
+    button.appendChild(spinner);
+    button.appendChild(label);
+  }
+
+  function initSubmitLoading() {
+    document.querySelectorAll("form").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        if (event.defaultPrevented) return;
+
+        const method = (form.getAttribute("method") || "GET").toUpperCase();
+        if (method !== "POST") return;
+
+        const submitter = event.submitter || form.querySelector("button[type='submit']");
+        if (!submitter || submitter.dataset.noLoading === "true") return;
+
+        const loadingText = submitter.dataset.loadingText || "Saving...";
+        setButtonLoading(submitter, loadingText);
+      });
+    });
+  }
+
   function initMobileMenu() {
     const mobileMenuBtn = document.getElementById("mobileMenuBtn");
     const sidebar = document.getElementById("sidebar");
@@ -495,6 +533,7 @@
     initMobileMenu();
     initEditButtons();
     initConfirmLinks();
+    initSubmitLoading();
     initModalBackdropClose(modals);
     initUtangTotal();
     initListSearch("customerSearch", ".customer-item", "block");
