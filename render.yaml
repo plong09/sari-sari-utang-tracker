@@ -1,14 +1,8 @@
-databases:
-  - name: sari-sari-utang-db
-    plan: basic-256mb
-    databaseName: sari_sari_utang
-    user: sari_sari_utang
-
 services:
   - type: web
     name: sari-sari-utang-tracker
     runtime: python
-    plan: starter
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     healthCheckPath: /healthz
@@ -20,6 +14,4 @@ services:
       - key: PASSWORD
         sync: false
       - key: DATABASE_URL
-        fromDatabase:
-          name: sari-sari-utang-db
-          property: connectionString
+        sync: false
