@@ -12,8 +12,13 @@
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <aside class="sidebar" id="sidebar">
-    <h2>SARI-SARI STORE</h2>
-    <p>Utang Tracker</p>
+    <div class="brand-block">
+      <div class="brand-mark">UT</div>
+      <div>
+        <h2>SARI-SARI STORE</h2>
+        <p>Utang Tracker</p>
+      </div>
+    </div>
 
     <nav>
       <a href="/" class="{% if page == 'dashboard' %}active{% endif %}"><i class="fas fa-home"></i> Dashboard</a>
@@ -26,28 +31,75 @@
 
     <div class="summary">
       <h3>Quick Summary</h3>
-      <p>Total Unpaid</p>
-      <strong>&#8369; {{ "%.2f"|format(total_utang) }}</strong>
-      <p>Collected</p>
-      <strong>&#8369; {{ "%.2f"|format(total_paid) }}</strong>
-      <p>Customers</p>
-      <strong>{{ customer_count }}</strong>
+      <div class="summary-grid">
+        <div>
+          <p>Total Unpaid</p>
+          <strong>&#8369; {{ "%.2f"|format(total_utang) }}</strong>
+        </div>
+        <div>
+          <p>Collected</p>
+          <strong>&#8369; {{ "%.2f"|format(total_paid) }}</strong>
+        </div>
+        <div>
+          <p>Customers</p>
+          <strong>{{ customer_count }}</strong>
+        </div>
+      </div>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
-      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
-        <i class="fas fa-bars"></i>
-      </button>
-      <div>
-        <i class="fas fa-user"></i> Owner
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="page-title">
+          <span>
+            {% if selected_customer %}
+              Customer account
+            {% elif page == "dashboard" %}
+              Store overview
+            {% elif page == "customers" %}
+              Directory
+            {% elif page == "products" %}
+              Inventory
+            {% elif page == "records" %}
+              Ledger
+            {% elif page == "reports" %}
+              Insights
+            {% else %}
+              Workspace
+            {% endif %}
+          </span>
+          <h1>
+            {% if selected_customer %}
+              {{ selected_customer[1] }}
+            {% elif page == "dashboard" %}
+              Dashboard
+            {% elif page == "customers" %}
+              Customers
+            {% elif page == "products" %}
+              Products
+            {% elif page == "records" %}
+              Utang Records
+            {% elif page == "reports" %}
+              Reports
+            {% else %}
+              Settings
+            {% endif %}
+          </h1>
+        </div>
+      </div>
+
+      <div class="topbar-account">
+        <span><i class="fas fa-user"></i> Owner</span>
         <a href="/logout" class="logout-btn">Logout</a>
       </div>
     </header>
 
     <section class="cards">
-      <div class="stat">
+      <div class="stat stat-danger">
         <span><i class="fas fa-wallet"></i></span>
         <div>
           <p>Total Unpaid</p>
@@ -55,7 +107,7 @@
         </div>
       </div>
 
-      <div class="stat">
+      <div class="stat stat-success">
         <span><i class="fas fa-coins"></i></span>
         <div>
           <p>Total Paid</p>
@@ -63,7 +115,7 @@
         </div>
       </div>
 
-      <div class="stat">
+      <div class="stat stat-info">
         <span><i class="fas fa-calendar-plus"></i></span>
         <div>
           <p>Added Today</p>
@@ -71,7 +123,7 @@
         </div>
       </div>
 
-      <div class="stat">
+      <div class="stat stat-neutral">
         <span><i class="fas fa-users"></i></span>
         <div>
           <p>Customers</p>
@@ -276,8 +328,7 @@
           </div>
         {% else %}
           <div class="empty-state">
-            <h2>Select a customer</h2>
-            <p>Click a customer from the list to view and add utang records.</p>
+            <h2>No customer selected</h2>
           </div>
         {% endif %}
       </div>
@@ -423,7 +474,7 @@
       </div>
 
       <div class="cards report-cards">
-        <div class="stat">
+        <div class="stat stat-danger">
           <span><i class="fas fa-wallet"></i></span>
           <div>
             <p>Total Unpaid</p>
@@ -431,7 +482,7 @@
           </div>
         </div>
 
-        <div class="stat">
+        <div class="stat stat-success">
           <span><i class="fas fa-coins"></i></span>
           <div>
             <p>Total Paid</p>
@@ -439,7 +490,7 @@
           </div>
         </div>
 
-        <div class="stat">
+        <div class="stat stat-info">
           <span><i class="fas fa-calendar-day"></i></span>
           <div>
             <p>Paid Today</p>
@@ -447,7 +498,7 @@
           </div>
         </div>
 
-        <div class="stat">
+        <div class="stat stat-neutral">
           <span><i class="fas fa-receipt"></i></span>
           <div>
             <p>Records</p>
@@ -455,7 +506,7 @@
           </div>
         </div>
 
-        <div class="stat">
+        <div class="stat stat-warning">
           <span><i class="fas fa-crown"></i></span>
           <div>
             <p>Top Customer</p>
