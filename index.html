@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Local browser utang tracker for a sari-sari store.">
+  <title>Sari-Sari Utang Tracker</title>
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">UT</div>
+      <div><h2>SARI-SARI STORE</h2><p>Local Utang Tracker</p></div>
+    </div>
+    <nav id="mainNav">
+      <a href="#dashboard" data-route="dashboard"><i class="fas fa-home"></i> Dashboard</a>
+      <a href="#customers" data-route="customers"><i class="fas fa-users"></i> Customers</a>
+      <a href="#products" data-route="products"><i class="fas fa-box"></i> Products</a>
+      <a href="#records" data-route="records"><i class="fas fa-receipt"></i> Utang Records</a>
+      <a href="#reports" data-route="reports"><i class="fas fa-chart-column"></i> Reports</a>
+      <a href="#settings" data-route="settings"><i class="fas fa-gear"></i> Settings</a>
+    </nav>
+    <div class="summary">
+      <h3>Quick Summary</h3>
+      <div class="summary-grid">
+        <div><p>Total Unpaid</p><strong id="sideUnpaid">P0.00</strong></div>
+        <div><p>Collected</p><strong id="sidePaid">P0.00</strong></div>
+        <div><p>Customers</p><strong id="sideCustomers">0</strong></div>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu"><i class="fas fa-bars"></i></button>
+        <div class="page-title"><span id="pageEyebrow">Store overview</span><h1 id="pageTitle">Dashboard</h1></div>
+      </div>
+      <div class="topbar-account"><span><i class="fas fa-user"></i> Local browser</span></div>
+    </header>
+    <section class="cards">
+      <div class="stat stat-danger"><span><i class="fas fa-wallet"></i></span><div><p>Total Unpaid</p><h2 id="statUnpaid">P0.00</h2></div></div>
+      <div class="stat stat-success"><span><i class="fas fa-coins"></i></span><div><p>Total Paid</p><h2 id="statPaid">P0.00</h2></div></div>
+      <div class="stat stat-info"><span><i class="fas fa-calendar-plus"></i></span><div><p>Added Today</p><h2 id="statToday">P0.00</h2></div></div>
+      <div class="stat stat-neutral"><span><i class="fas fa-users"></i></span><div><p>Customers</p><h2 id="statCustomers">0</h2></div></div>
+    </section>
+    <section id="view"></section>
+  </main>
+</div>
+<input id="importFile" type="file" accept="application/json" hidden>
+<script src="static/app.js" defer></script>
+</body>
+</html>

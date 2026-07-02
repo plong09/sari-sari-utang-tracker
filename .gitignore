@@ -1,6 +1,7 @@
-database.db
-.env
+﻿.env
 *.log
+database.db
 venv/
 __pycache__/
-*.pyc
+.DS_Store
+Thumbs.db
