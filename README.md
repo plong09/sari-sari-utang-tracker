@@ -6,13 +6,6 @@ A static, browser-only utang tracker for a small sari-sari store. It helps a sto
 
 This is the localStorage version of the app.
 
-- No Render deployment
-- No Flask backend
-- No SQLite or PostgreSQL database
-- No login system
-- No environment variables
-- Ready for static hosting on Vercel
-
 All data is saved in the browser using `localStorage`.
 
 ## Features
@@ -82,10 +75,6 @@ sari-sari-utang-tracker/
 ├── README.md           # Project setup and usage
 └── PORTFOLIO.md        # Portfolio case study summary
 ```
-
-## Why This Is Portfolio-Worthy
-
-This project is practical, easy to explain, and solves a real local business problem. It demonstrates CRUD operations, client-side state management, localStorage persistence, calculations, export/import features, and responsive UI design using plain HTML, CSS, and JavaScript.
 
 ## Future Improvements
 
