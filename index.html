@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
-<div class="app">
+<div id="lockScreen" class="login-page" hidden></div>
+<div class="app" id="appShell">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <aside class="sidebar" id="sidebar">
     <div class="brand-block">
@@ -38,7 +39,10 @@
         <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu"><i class="fas fa-bars"></i></button>
         <div class="page-title"><span id="pageEyebrow">Store overview</span><h1 id="pageTitle">Dashboard</h1></div>
       </div>
-      <div class="topbar-account"><span><i class="fas fa-user"></i> Local browser</span></div>
+      <div class="topbar-account">
+        <span><i class="fas fa-user"></i> <span id="syncStatus">Local only</span></span>
+        <button class="logout-btn" data-action="lock-now" type="button"><i class="fas fa-lock"></i> Lock</button>
+      </div>
     </header>
     <section class="cards">
       <div class="stat stat-danger"><span><i class="fas fa-wallet"></i></span><div><p>Total Unpaid</p><h2 id="statUnpaid">P0.00</h2></div></div>
@@ -50,6 +54,7 @@
   </main>
 </div>
 <input id="importFile" type="file" accept="application/json" hidden>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="static/app.js" defer></script>
 </body>
 </html>

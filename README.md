@@ -81,5 +81,5 @@ sari-sari-utang-tracker/
 - Add passcode protection for the owner
 - Add printable customer receipt design
 - Add better charts for reports
-- Add cloud sync with Supabase or Firebase
+- Add cloud sync with Supabase e
 - Add daily automatic backup reminders

@@ -1,27 +1,32 @@
-﻿# Portfolio Case Study: Sari-Sari Utang Tracker
+# Portfolio Case Study: Sari-Sari Utang Tracker
 
 ## Overview
 
-Sari-Sari Utang Tracker is a browser-based ledger app for a small Filipino sari-sari store. It helps the store owner track customers who buy on credit, record payments, and monitor unpaid balances.
+Sari-Sari Utang Tracker is a local-first ledger app for a small Filipino sari-sari store. It helps the owner track customer utang, payments, unpaid balances, printable receipts, backups, and optional cloud sync.
 
 ## Problem
 
-Small neighborhood stores often track utang manually in notebooks. This can make it hard to search customer balances, calculate partial payments, and keep backup copies of records.
+Small neighborhood stores often track utang manually in notebooks. This makes it hard to search customer balances, calculate partial payments, print a receipt, and keep backup copies of records.
 
 ## Solution
 
-I built a static web app that runs in the browser and saves data using localStorage. The owner can manage customers, products, credit records, and payments without installing a database or server.
+I built a static web app that runs quickly in the browser using localStorage, then added optional Supabase sync for cloud backup. The owner can use it on one device without a server, or connect a free Supabase project for cross-device data recovery.
 
 ## Main Features
 
+- Owner passcode protection
 - Add and search customers
 - Add products and prices
 - Record utang per customer
-- Calculate total, paid amount, and unpaid balance
+- Calculate paid amount and unpaid balance
 - Mark individual or all records as paid
 - Record partial payments
+- Printable customer receipt
+- Dashboard and report charts
 - Export CSV reports
 - Export/import JSON backups
+- Daily backup reminders
+- Optional Supabase cloud sync with Row Level Security
 - Responsive dashboard layout
 
 ## Tech Used
@@ -30,30 +35,25 @@ I built a static web app that runs in the browser and saves data using localStor
 - CSS
 - JavaScript
 - Browser localStorage
+- Supabase Auth and PostgreSQL
 - Vercel static hosting
 
 ## What I Learned
 
 - How to structure a plain JavaScript app without a framework
-- How to use localStorage for simple persistent data
-- How to build CRUD features on the frontend
-- How to calculate running balances from record data
+- How to design a local-first workflow for real store use
+- How to use localStorage for fast persistent data
+- How to add optional cloud sync without making the app depend on internet access
+- How to calculate running balances from ledger data
+- How to render simple charts with Canvas
 - How to export CSV and JSON files from the browser
 - How to prepare a static project for Vercel deployment
+- How to write Supabase Row Level Security policies
 
 ## Limitations
 
-This version stores data only in one browser. It is good for a simple single-device store setup, but a larger real-world version should use a cloud database, authentication, and automatic backups.
-
-## Future Improvements
-
-- Add owner passcode or login
-- Add cloud sync
-- Add printable receipt layout
-- Add monthly sales and collection reports
-- Add product categories
-- Add backup reminders
+This is designed for one store owner/admin. The local passcode is useful for casual protection on the device, but serious production use should also rely on strong device security, Supabase Auth, regular backups, and careful access control.
 
 ## Portfolio Pitch
 
-A practical local business app built with plain HTML, CSS, and JavaScript. It shows real-world problem solving, CRUD logic, browser storage, responsive design, and deployment readiness.
+A practical local business app built with plain HTML, CSS, and JavaScript, upgraded with optional Supabase cloud sync. It shows real-world problem solving, CRUD logic, local-first data design, auth-aware sync, responsive UI, reporting, backups, and deployment readiness.
