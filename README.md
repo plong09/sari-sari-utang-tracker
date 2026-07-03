@@ -1,26 +1,39 @@
-﻿# Sari-Sari Utang Tracker
+# Sari-Sari Utang Tracker
 
-A static, browser-only utang tracker for a small sari-sari store. It helps a store owner record customers, products, utang entries, payments, and unpaid balances without needing a server or database.
+A local-first credit/debt ledger for a small Filipino sari-sari store. It helps one store owner track customers, utang records, partial payments, unpaid balances, printable receipts, backups, reports, and optional Supabase cloud sync.
+
+The app is built to stay simple and free to run:
+
+- Hosting: Vercel free tier
+- Local storage: Browser `localStorage`
+- Optional cloud sync: Supabase free tier
+- Optional auth: Supabase Auth free tier
 
 ## Project Type
 
-This is the localStorage version of the app.
+This is a static browser app. It does not need Flask, Render, SQLite, or a paid database server.
 
-All data is saved in the browser using `localStorage`.
+Data is saved locally first using `localStorage`, so the app stays fast even without internet. Supabase sync is optional and can be enabled from the Settings page.
 
 ## Features
 
+- Owner passcode protection
 - Customer management with name, phone, address, and notes
 - Product list with default sari-sari store items
 - Add utang records by customer, product, quantity, and price
-- Automatic total and running unpaid balance calculation
-- Mark one utang as paid
-- Mark all customer utang as paid
+- Automatic total, paid amount, and unpaid balance calculation
+- Mark one utang record as paid
+- Mark all customer utang records as paid
 - Record partial customer payments
+- Printable customer receipt for unpaid balances
+- Dashboard summary cards
+- Reports with charts
 - View all records and recent payments
 - Search customers, products, and records
 - Export customers and records as CSV
 - Export and import JSON backups
+- Daily backup reminder
+- Optional Supabase cloud sync
 - Responsive layout for desktop and mobile
 
 ## How To Run Locally
@@ -31,55 +44,174 @@ Open the project folder:
 cd "C:\MYPROJECTS\Sari-Sari Utang Tracker"
 ```
 
-Open the app directly:
+Open the app:
 
 ```powershell
 Start-Process .\index.html
 ```
 
-You can also open `index.html` manually in your browser.
+You can also double-click `index.html` or open it manually in your browser.
 
-## How To Deploy To Vercel
+## Before Deploying
 
-1. Push this project to GitHub.
-2. Import the repository in Vercel.
-3. Use these settings:
+Test these features locally first:
+
+- Add a customer
+- Add an utang record
+- Record a partial payment
+- Print a customer receipt
+- Export a JSON backup
+- Open Settings and set an owner passcode
+
+## Deploy To Vercel
+
+Push the project to GitHub:
+
+```powershell
+git status
+git add index.html static README.md PORTFOLIO.md supabase vercel.json .gitignore
+git commit -m "Prepare Sari-Sari Utang Tracker for deployment"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+git push -u origin main
+```
+
+If your repository already has a remote, skip `git remote add origin ...` and run:
+
+```powershell
+git push -u origin main
+```
+
+Then deploy:
+
+1. Go to Vercel.
+2. Sign in with GitHub.
+3. Click `New Project`.
+4. Import your GitHub repository.
+5. Use these settings:
    - Framework Preset: `Other`
    - Build Command: leave empty
    - Output Directory: leave empty/root
-4. Deploy.
+   - Install Command: leave empty
+6. Click `Deploy`.
 
-The included `vercel.json` redirects all routes to `index.html`, which keeps the static app working on Vercel.
+The included `vercel.json` rewrites all routes to `index.html`, which keeps the static single-page app working on Vercel.
 
-## Data Storage Warning
+## Optional Supabase Cloud Sync
 
-This app stores data only in the browser where it is used. Data will not automatically sync across phones, laptops, or browsers.
+The app works without Supabase. Use Supabase only if you want cloud backup or cross-device recovery.
 
-Before clearing browser data or moving devices, use:
+### Create Supabase Project
 
-`Settings -> Export JSON Backup`
+1. Create a free Supabase project.
+2. Go to `Authentication -> Providers`.
+3. Make sure Email/Password sign-in is enabled.
+4. Go to `SQL Editor`.
+5. Open this project file:
 
-To restore data later, use:
+```text
+supabase/schema.sql
+```
 
-`Settings -> Import JSON Backup`
+6. Copy the SQL code and run it in Supabase.
+
+This creates one table:
+
+```text
+ledger_snapshots
+```
+
+The table uses Row Level Security so a signed-in owner can only read and write their own cloud snapshot.
+
+### Connect The App To Supabase
+
+In Supabase, copy:
+
+- Project URL
+- Anon/public key
+
+Do not use the `service_role` key in this app.
+
+Then open your deployed app and go to:
+
+```text
+Settings -> Supabase Cloud Sync
+```
+
+Enter your Supabase Project URL and anon key, then:
+
+1. Click `Save Supabase Config`.
+2. Sign up or sign in with the owner email/password.
+3. Click `Upload Local`.
+4. Turn on `Auto sync after changes` if you want automatic uploads.
+
+### Supabase Auth URL
+
+After Vercel gives you a production URL, add it in Supabase:
+
+```text
+Authentication -> URL Configuration -> Site URL
+```
+
+Example:
+
+```text
+https://your-app-name.vercel.app
+```
+
+## Daily Usage
+
+Recommended workflow for the store owner:
+
+1. Open the app on the store phone, tablet, or computer.
+2. Add customers when someone buys on credit.
+3. Add utang records each time they borrow or buy.
+4. Record partial payments when they pay.
+5. Print a receipt when needed.
+6. Export a JSON backup daily or keep Supabase auto sync enabled.
+
+## Data Safety Notes
+
+This app is local-first. The browser stores the main copy of the ledger.
+
+Before clearing browser data, changing phones, or reinstalling a browser, use:
+
+```text
+Settings -> Export JSON Backup
+```
+
+To restore later, use:
+
+```text
+Settings -> Import JSON Backup
+```
+
+The owner passcode is a local convenience lock. For real-world use, also protect the actual device with a strong password, PIN, or fingerprint.
 
 ## Code Structure
 
 ```text
 sari-sari-utang-tracker/
-├── index.html          # Static app shell
+├── index.html              # Static app shell
 ├── static/
-│   ├── app.js          # App logic, localStorage, CRUD, export/import
-│   └── style.css       # Responsive dashboard styling
-├── vercel.json         # Vercel static app rewrite
-├── README.md           # Project setup and usage
-└── PORTFOLIO.md        # Portfolio case study summary
+│   ├── app.js              # App logic, localStorage, CRUD, reports, sync
+│   └── style.css           # Responsive dashboard styling
+├── supabase/
+│   └── schema.sql          # Supabase table and RLS policies
+├── vercel.json             # Vercel static app rewrite
+├── README.md               # Project setup and deployment guide
+└── PORTFOLIO.md            # Portfolio case study summary
 ```
 
-## Future Improvements
+## Portfolio Notes
 
-- Add passcode protection for the owner
-- Add printable customer receipt design
-- Add better charts for reports
-- Add cloud sync with Supabase e
-- Add daily automatic backup reminders
+This project is good for a student portfolio because it solves a realistic local business problem and includes:
+
+- CRUD operations
+- Local-first data storage
+- Optional cloud sync
+- Authentication-aware security rules
+- Export/import backups
+- Responsive UI
+- Reports and charts
+- Deployment readiness
